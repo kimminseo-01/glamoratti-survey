@@ -204,9 +204,26 @@ elif st.session_state.page == 'main_survey':
 
     st.write("---")
     
-    # 하단에도 하나 더 배치 (선택 사항)
-    if st.button("⬆️ 화면 맨 위로", key="scroll_bottom"):
-        st.rerun()
+    st.markdown(
+        """
+        <a href="#top-of-page" target="_self" style="
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #F0F2F6;
+            color: #31333F;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            border: 1px solid #DAE1E7;
+            margin-bottom: 20px; 
+        ">
+        ⬆️ 화면 맨 위로 올라가기
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
 
     # 이동 버튼 로직
     if idx < total_sets - 1:
