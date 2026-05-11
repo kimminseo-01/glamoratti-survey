@@ -102,7 +102,7 @@ def apply_common_css():
             object-fit: contain;
         }
         /* 🌟 이미지 영역이 커진 만큼 본문 시작 위치를 420px로 조정했습니다 */
-        .spacer { margin-top: 420px; }
+        .spacer { margin-top: 200px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
