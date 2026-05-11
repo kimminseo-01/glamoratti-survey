@@ -82,16 +82,16 @@ elif st.session_state.page == 'demographics':
 
 # --- 4. [3페이지] 메인 설문 (감성 평가 좌/우 분리 버전) ---
 elif st.session_state.page == 'main_survey':
+    idx = st.session_state.current_idx
     components.html(
         f"""
         <script>
             window.parent.window.scrollTo(0,0);
         </script>
         """,
-        height=0
+        height=0,
+        key=f"scroll_script_{idx}" # 인덱스가 바뀔 때마다 스크롤을 다시 올립니다.
     )
-    
-    idx = st.session_state.current_idx
     total_sets = len(st.session_state.random_order)
     current_img_file = st.session_state.random_order[idx]
     
