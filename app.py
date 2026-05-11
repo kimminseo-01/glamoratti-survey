@@ -84,7 +84,7 @@ def apply_common_css():
             max-width: 100%;
             object-fit: contain;
         }
-        .spacer { margin-top: 200px; }
+        .spacer { margin-top: 300px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
