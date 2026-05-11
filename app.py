@@ -112,28 +112,31 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 구글 폼 스타일 7점 척도 만들기 (간격 균등 분할 완벽 적용) */
+        /* 🌟 [강력한 해결책] Grid를 사용하여 무조건 7등분하기 */
         
-        /* 1. 라디오 그룹 전체를 화면 꽉 차게 씁니다 */
+        /* 1. 라디오 그룹을 7칸짜리 표(Grid)로 만들고 화면을 꽉 채웁니다 */
         div[role="radiogroup"] {{
-            display: flex !important;
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important; /* 무조건 1:1:1:1:1:1:1 비율로 7등분 */
             width: 100% !important;
-            justify-content: space-between !important;
+            gap: 0px !important; /* 스트림릿의 기본 간격을 무시 */
         }}
         
-        /* 2. 각 버튼(label)이 동일한 비율(1/n)로 구역을 차지하게 강제합니다 (핵심!) */
+        /* 2. 각 칸 안에서 글자는 위로, 동그라미는 아래로 가운데 정렬 */
         div[role="radiogroup"] > label {{
-            flex: 1 !important; /* 여기서 7등분으로 쫙 펼쳐줍니다 */
+            display: flex !important;
             flex-direction: column-reverse !important; 
             align-items: center !important;
             justify-content: center !important;
-            gap: 8px !important; /* 숫자와 동그라미 사이 간격 */
-            margin: 0 !important; /* 기본 여백 제거 */
+            margin: 0 !important;
+            padding: 0 !important;
         }}
         
-        /* 3. 기본적으로 들어가는 좌측 여백을 없애서 삐뚤어짐 방지 */
+        /* 3. 동그라미 위치를 한 번 더 중앙으로 꽉 잡아줍니다 */
         div[role="radiogroup"] > label > div:first-child {{
             margin-right: 0px !important;
+            display: flex;
+            justify-content: center;
         }}
         </style>
         
