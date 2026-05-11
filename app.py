@@ -112,18 +112,26 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 [강력한 해결책] Grid를 사용하여 무조건 7등분하기 */
+        /* 🌟 [최종 해결책] 스트림릿 고유 속성을 직접 타격하여 구글 폼 스타일 강제 적용 */
         
-        /* 1. 라디오 그룹을 7칸짜리 표(Grid)로 만들고 화면을 꽉 채웁니다 */
-        div[role="radiogroup"] {{
-            display: grid !important;
-            grid-template-columns: repeat(7, 1fr) !important; /* 무조건 1:1:1:1:1:1:1 비율로 7등분 */
+        /* 1. 라디오 버튼의 가장 바깥쪽 컨테이너부터 100%로 늘려버립니다 */
+        [data-testid="stRadio"] {{
             width: 100% !important;
-            gap: 0px !important; /* 스트림릿의 기본 간격을 무시 */
         }}
         
-        /* 2. 각 칸 안에서 글자는 위로, 동그라미는 아래로 가운데 정렬 */
-        div[role="radiogroup"] > label {{
+        /* 2. 동그라미들이 들어있는 실제 그룹을 화면 끝까지 펼칩니다 */
+        [data-testid="stRadio"] > div[role="radiogroup"] {{
+            display: flex !important;
+            flex-direction: row !important;
+            width: 100% !important;
+            justify-content: space-between !important;
+            gap: 0 !important; /* 스트림릿의 기본 여백 무시 */
+        }}
+        
+        /* 3. 각 선택지(1~7)를 정확히 1/N로 강제 할당합니다 (가장 중요!) */
+        [data-testid="stRadio"] > div[role="radiogroup"] > label {{
+            flex: 1 1 0px !important; /* 남는 공간 없이 무조건 똑같이 나눠 가짐 */
+            min-width: 0 !important; 
             display: flex !important;
             flex-direction: column-reverse !important; 
             align-items: center !important;
@@ -132,11 +140,15 @@ elif st.session_state.page == 'main_survey':
             padding: 0 !important;
         }}
         
-        /* 3. 동그라미 위치를 한 번 더 중앙으로 꽉 잡아줍니다 */
-        div[role="radiogroup"] > label > div:first-child {{
-            margin-right: 0px !important;
-            display: flex;
-            justify-content: center;
+        /* 4. 동그라미 아이콘이 들어간 부분의 쓸데없는 왼쪽 여백 제거 */
+        [data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {{
+            margin: 0 !important;
+        }}
+        
+        /* 5. 숫자(1, 2, 3...) 부분의 위치와 여백 조정 */
+        [data-testid="stRadio"] > div[role="radiogroup"] > label > div:last-child {{
+            margin-left: 0 !important;
+            margin-bottom: 8px !important; /* 동그라미와의 간격 띄우기 */
         }}
         </style>
         
