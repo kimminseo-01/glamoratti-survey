@@ -39,42 +39,52 @@ def get_image_base64(path):
 
 # --- 🌟 강력해진 스크롤 자바스크립트 함수 ---
 def scroll_to_top_script():
-    # 이 스크립트는 페이지 로드 시 혹은 버튼 클릭 시 모든 가능한 스트림릿 컨테이너를 위로 올립니다.
     return """
     <script>
     function forceScrollTop() {
-        const selectors = [
-            '.main', 
-            '[data-testid="stAppViewContainer"]', 
-            '.stApp',
-            'window',
-            'document.documentElement'
-        ];
+        const target = window.parent.document.querySelector('.main') || 
+                       window.parent.document.querySelector('[data-testid="stAppViewContainer"]') ||
+                       window.parent;
         
-        // 1. 부모 윈도우 직접 스크롤
+        if (target) {
+            target.scrollTo({top: 0, behavior: 'instant'});
+        }
         window.parent.scrollTo({top: 0, behavior: 'instant'});
-        
-        // 2. 모든 후보 컨테이너 탐색 및 스크롤
-        selectors.forEach(selector => {
-            const el = (selector === 'window') ? window.parent : window.parent.document.querySelector(selector);
-            if (el) {
-                if (el.scrollTop !== undefined) el.scrollTop = 0;
-                if (el.scrollTo) el.scrollTo({top: 0, behavior: 'instant'});
-            }
-        });
     }
-    // 즉시 실행 (페이지 로드/이동 시)
     forceScrollTop();
     </script>
     """
 
-# --- 공통 CSS ---
+# --- 공통 CSS (이미지 크기 및 여백 수정) ---
 def apply_common_css():
     st.markdown("""
         <style>
         header {visibility: hidden;}
-        .sticky-image { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 0; border-bottom: 2px solid #ddd; text-align: center; }
-        .spacer { margin-top: 420px; }
+        
+        /* 상단 고정 영역 높이 제한 */
+        .sticky-image { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            background-color: white; 
+            z-index: 1000; 
+            padding: 5px 0; 
+            border-bottom: 2px solid #ddd; 
+            text-align: center; 
+        }
+        
+        /* 이미지 크기가 너무 커지지 않도록 제한 */
+        .sticky-image img {
+            max-height: 200px; /* 이미지 높이를 200px로 제한 */
+            width: auto;
+            max-width: 90%;
+            object-fit: contain;
+        }
+        
+        /* 이미지 영역 축소에 따른 본문 시작 위치 조정 */
+        .spacer { margin-top: 290px; }
+        
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
@@ -124,7 +134,7 @@ elif st.session_state.page == 'part1_survey':
     idx = st.session_state.p1_idx
     apply_common_css()
     
-    # 이미지 변경 시 자동 스크롤
+    # 자동 스크롤 실행
     components.html(scroll_to_top_script(), height=0)
     
     total_p1 = len(st.session_state.p1_order)
@@ -132,7 +142,7 @@ elif st.session_state.page == 'part1_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}" width="480"><br><small>{current_img_file}</small></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
@@ -151,10 +161,10 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
-    # 수동 맨 위로 버튼
-    components.html(f"{scroll_to_top_script()}<button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>", height=60)
+    # 수동 맨 위로 버튼 (스크립트 재호출)
+    components.html(f"""<script>function forceScrollTop(){{const t=window.parent.document.querySelector('.main')||window.parent.document.querySelector('[data-testid="stAppViewContainer"]')||window.parent;if(t){{t.scrollTo({{top: 0, behavior: 'instant'}});}}window.parent.scrollTo({{top: 0, behavior: 'instant'}});}}</script><button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>""", height=60)
     
-    if st.button("다음 이미지로 ->"):
+    if st.button("다음 이미지로 ->", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
         if st.session_state.p1_idx >= total_p1: st.session_state.page = 'part2_intro'
@@ -181,12 +191,11 @@ elif st.session_state.page == 'part2_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}" width="480"><br><small>{current_img_file}</small></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
     
-    # 수용 의도 평가 (3문항)
     st.subheader("2. 수용 의도 평가")
     acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
     for i, item in enumerate(acc_items):
@@ -203,7 +212,6 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    # 재해석 정도 평가 (4문항)
     st.subheader("3. 재해석 정도 평가")
     re_items = ["실루엣", "색상", "소재", "디테일"]
     for i, item in enumerate(re_items):
@@ -220,15 +228,15 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    components.html(f"{scroll_to_top_script()}<button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>", height=60)
+    components.html(f"""<script>function forceScrollTop(){{const t=window.parent.document.querySelector('.main')||window.parent.document.querySelector('[data-testid="stAppViewContainer"]')||window.parent;if(t){{t.scrollTo({{top: 0, behavior: 'instant'}});}}window.parent.scrollTo({{top: 0, behavior: 'instant'}});}}</script><button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>""", height=60)
     
     if idx < total_p2 - 1:
-        if st.button("다음 이미지 쌍으로 ->"):
+        if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
             st.rerun()
     else:
-        if st.button("✅ 모든 설문 완료 및 제출"):
+        if st.button("✅ 모든 설문 완료 및 제출", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             final_data = {**st.session_state.user_data, **st.session_state.all_responses}
             conn = st.connection("gsheets", type=GSheetsConnection)
