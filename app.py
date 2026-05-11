@@ -105,7 +105,6 @@ elif st.session_state.page == 'main_survey':
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
     # 기존 CSS에 구글 폼 스타일(라디오 버튼 세로 정렬)을 추가한 버전입니다.
-    # 기존 CSS에 구글 폼 스타일(라디오 버튼 세로 정렬)을 추가한 버전입니다.
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -113,19 +112,26 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 [여기서부터 추가됨] 구글 폼 스타일 7점 척도 만들기 */
-        /* 1. 라디오 버튼 그룹 전체를 양옆으로 균등하게 쫙 펼칩니다 */
+        /* 🌟 구글 폼 스타일 7점 척도 만들기 (간격 균등 분할 완벽 적용) */
+        
+        /* 1. 라디오 그룹 전체를 화면 꽉 차게 씁니다 */
         div[role="radiogroup"] {{
-            justify-content: space-between;
-            width: 100%;
+            display: flex !important;
+            width: 100% !important;
+            justify-content: space-between !important;
         }}
-        /* 2. 글자는 위로, 동그라미는 아래로 순서를 바꿉니다 (column-reverse) */
+        
+        /* 2. 각 버튼(label)이 동일한 비율(1/n)로 구역을 차지하게 강제합니다 (핵심!) */
         div[role="radiogroup"] > label {{
+            flex: 1 !important; /* 여기서 7등분으로 쫙 펼쳐줍니다 */
             flex-direction: column-reverse !important; 
-            align-items: center;
-            gap: 8px; /* 숫자와 동그라미 사이의 간격 */
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important; /* 숫자와 동그라미 사이 간격 */
+            margin: 0 !important; /* 기본 여백 제거 */
         }}
-        /* 3. 기본적으로 들어가는 좌측 여백을 없애서 가운데 정렬을 맞춥니다 */
+        
+        /* 3. 기본적으로 들어가는 좌측 여백을 없애서 삐뚤어짐 방지 */
         div[role="radiogroup"] > label > div:first-child {{
             margin-right: 0px !important;
         }}
@@ -136,7 +142,8 @@ elif st.session_state.page == 'main_survey':
             <img src="{img_src}" width="480"><br>
             <small style="color: #999;">파일명: {current_img_file}</small> 
         </div>
-        """, unsafe_allow_html=True)        
+        """, unsafe_allow_html=True)
+        
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     # 이후 문항 코드들은 들여쓰기 없이(원래대로) 쭉 작성하시면 됩니다.
