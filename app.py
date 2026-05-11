@@ -1,6 +1,6 @@
 import streamlit as st
 import base64
-import random  # 랜덤 순서를 위해 필요
+import random  
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
@@ -10,17 +10,27 @@ if 'page' not in st.session_state:
     st.session_state.page = 'intro'
 if 'user_data' not in st.session_state:
     st.session_state.user_data = {}
-if 'current_idx' not in st.session_state:
-    st.session_state.current_idx = 0  # 0번 인덱스(첫 번째 이미지)부터 시작
 if 'all_responses' not in st.session_state:
     st.session_state.all_responses = {}
 
-# 🌟 중요: 이미지 순서를 랜덤하게 섞어서 저장하는 로직
-if 'random_order' not in st.session_state:
-    # pair1.png ~ pair13.png 리스트 생성
-    file_list = [f"pair{i}.png" for i in range(1, 14)] 
-    random.shuffle(file_list)  # 리스트를 무작위로 섞음
-    st.session_state.random_order = file_list
+# [수정됨] 파트 1과 파트 2의 인덱스를 각각 관리합니다.
+if 'p1_idx' not in st.session_state:
+    st.session_state.p1_idx = 0
+if 'p2_idx' not in st.session_state:
+    st.session_state.p2_idx = 0
+
+# 🌟 [수정됨] 파트 1 (단일 이미지 S1~S24) 랜덤 리스트
+if 'p1_order' not in st.session_state:
+    p1_list = [f"S{i}.png" for i in range(1, 25)] 
+    random.shuffle(p1_list)
+    st.session_state.p1_order = p1_list
+
+# 🌟 [수정됨] 파트 2 (이미지 쌍 pair) 랜덤 리스트 (※ 실제 준비된 파일 개수에 맞춰 range를 수정하세요!)
+if 'p2_order' not in st.session_state:
+    # 예시: pair1.png 부터 pair12.png까지 있다고 가정
+    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
+    random.shuffle(p2_list)
+    st.session_state.p2_order = p2_list
 
 def get_image_base64(path):
     try:
@@ -29,13 +39,27 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
+# --- 공통 CSS (버튼 UI용) ---
+def apply_common_css():
+    st.markdown("""
+        <style>
+        header {visibility: hidden;}
+        .sticky-image { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 0; border-bottom: 2px solid #ddd; text-align: center; }
+        .spacer { margin-top: 420px; }
+        .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
+        div[data-testid="stButton"] button { height: 40px; }
+        </style>
+    """, unsafe_allow_html=True)
+
 # --- 2. [1페이지] 인트로 ---
 if st.session_state.page == 'intro':
     st.title("1980년대 패션의 재해석 수준에 따른 Glamoratti 아우터의 감성 인지 조사")
     st.write("---")
     st.subheader("실험 안내")
     st.info("""
-    본 설문조사는 Glamoratti 패션 트렌드 이미지에 대한 소비자의 감성적 반응을 측정하기 위한 연구용 설문입니다.
+    본 설문조사는 두 단계로 나뉘어 진행됩니다.
+    - [1단계] 아우터 이미지를 보고 느껴지는 감성을 평가합니다.
+    - [2단계] 두 이미지를 비교하며 수용 의도와 재해석 정도를 평가합니다.
     - 소요 시간: 약 20-30분 내외
     - 모든 응답은 익명으로 처리되며 연구 목적으로만 사용됩니다.
     """)
@@ -62,7 +86,6 @@ elif st.session_state.page == 'demographics':
                          "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
     if st.button("다음 단계로"):
-        # 💡 [수정됨] job 변수 확인 코드를 제거했습니다.
         if not (gender and age and edu and major and spending):
             st.error("모든 문항에 응답해 주세요.")
         else:
@@ -70,50 +93,26 @@ elif st.session_state.page == 'demographics':
                 "성별": gender, "연령": age, "학력": edu, 
                 "분야": major, "의류지출": spending
             })
-            st.session_state.page = 'main_survey'
+            st.session_state.page = 'part1_survey'
             st.rerun()
 
-# --- 4. [3페이지] 메인 설문 ---
-elif st.session_state.page == 'main_survey':
-    idx = st.session_state.current_idx
+# --- 4. [3페이지] 파트 1: 감성 인지 평가 (단일 이미지) ---
+elif st.session_state.page == 'part1_survey':
+    idx = st.session_state.p1_idx
+    apply_common_css()
     
-    # [스크롤 강제 위로 올리기]
-    components.html(
-        f"""
-        <script>
-            var mainContainer = window.parent.document.querySelector('.main');
-            if (mainContainer) {{
-                mainContainer.scrollTop = 0;
-            }}
-        </script>
-        <div style="display:none">{idx}</div>
-        """,
-        height=0
-    )
+    components.html("<script>var m=window.parent.document.querySelector('.main');if(m)m.scrollTop=0;</script>", height=0)
     
-    total_sets = len(st.session_state.random_order)
-    current_img_file = st.session_state.random_order[idx]
+    total_p1 = len(st.session_state.p1_order)
+    current_img_file = st.session_state.p1_order[idx]
     
     img_b64 = get_image_base64(current_img_file)
-    img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
+    img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/480x480.png?text=Image+Not+Found"
 
-    # 상단 고정 이미지 관련 CSS
     st.markdown(f"""
-        <style>
-        header {{visibility: hidden;}}
-        .sticky-image {{ position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 0; border-bottom: 2px solid #ddd; text-align: center; }}
-        .spacer {{ margin-top: 420px; }}
-        .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
-        
-        /* 버튼을 둥글게 하거나 높이를 조절하고 싶다면 아래 CSS를 활용할 수 있습니다 */
-        div[data-testid="stButton"] button {{
-            height: 40px;
-        }}
-        </style>
-        
         <div class="sticky-image">
-            <p style="margin:0; color: #888; font-size: 0.9em;">전체 13개 중 {idx+1}번째 평가</p>
-            <img src="{img_src}" width="480"><br>
+            <p style="margin:0; color: #888; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 인지 평가 ({idx+1} / {total_p1})</p>
+            <img src="{img_src}" width="480" style="max-height:300px; object-fit:contain;"><br>
             <small style="color: #999;">파일명: {current_img_file}</small> 
         </div>
         """, unsafe_allow_html=True)
@@ -128,51 +127,23 @@ elif st.session_state.page == 'main_survey':
         ("복잡하다", "간결하다"), ("밋밋하다", "화사하다")
     ]
 
-    # --- (1) 감성 인지 평가 ---
     st.subheader("1. 감성 인지 평가")
+    st.info("제시된 아우터 이미지를 보고 느껴지는 감성을 직관적으로 평가해 주세요.")
     
-    # 1-1. 좌측 이미지 평가
-    st.markdown('<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>', unsafe_allow_html=True)
     for i, (l, r) in enumerate(adj_pairs):
         cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
 
         with cols[0]:
             st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
 
-        key_name = f"{current_img_file}_Left_emo{i+1}"
+        key_name = f"{current_img_file}_emo{i+1}"
         if key_name not in st.session_state:
             st.session_state[key_name] = 4
 
         for score in range(1, 8):
             with cols[score]:
                 checked = st.session_state[key_name] == score
-                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
-                    st.session_state[key_name] = score
-                    st.rerun()  # 즉시 색상을 변경하기 위해 재실행
-
-        step_responses[key_name] = st.session_state[key_name]
-
-        with cols[8]:
-            st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
-
-    st.write("---")
-
-    # 1-2. 우측 이미지 평가
-    st.markdown("<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>", unsafe_allow_html=True)
-    for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
-
-        with cols[0]:
-            st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
-
-        key_name = f"{current_img_file}_Right_emo{i+1}"
-        if key_name not in st.session_state:
-            st.session_state[key_name] = 4
-
-        for score in range(1, 8):
-            with cols[score]:
-                checked = st.session_state[key_name] == score
-                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                if st.button(f"{score}", key=f"p1_{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
                     st.session_state[key_name] = score
                     st.rerun()
 
@@ -182,6 +153,58 @@ elif st.session_state.page == 'main_survey':
             st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
 
     st.write("---")
+    
+    components.html("""<script>function goToTop(){var t=[window.parent.document.querySelector('.main')];t.forEach(function(e){if(e)e.scrollTop=0;});}</script><button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>""", height=60)
+    
+    if st.button("다음 이미지로 ->"):
+        st.session_state.all_responses.update(step_responses)
+        st.session_state.p1_idx += 1
+        
+        with st.spinner("로딩 중..."):
+            import time; time.sleep(0.1) 
+            
+        if st.session_state.p1_idx >= total_p1:
+            st.session_state.page = 'part2_intro'
+        st.rerun()
+
+
+# --- 5. [4페이지] 파트 2 중간 안내 ---
+elif st.session_state.page == 'part2_intro':
+    st.title("🎉 파트 1 완료!")
+    st.success("단일 이미지 감성 평가가 모두 끝났습니다.")
+    st.write("---")
+    st.subheader("[파트 2] 수용 의도 및 재해석 정도 평가 안내")
+    st.write("지금부터는 원본 이미지(좌)와 재해석된 이미지(우)가 **쌍으로 제시**됩니다.")
+    st.write("두 이미지를 비교하며 **우측 이미지(재해석 아우터)**에 대한 귀하의 수용 의도와 재해석 정도를 평가해 주세요.")
+    
+    if st.button("파트 2 시작하기"):
+        st.session_state.page = 'part2_survey'
+        st.rerun()
+
+
+# --- 6. [5페이지] 파트 2: 수용 의도 및 재해석 정도 평가 (이미지 쌍) ---
+elif st.session_state.page == 'part2_survey':
+    idx = st.session_state.p2_idx
+    apply_common_css()
+    
+    components.html("<script>var m=window.parent.document.querySelector('.main');if(m)m.scrollTop=0;</script>", height=0)
+    
+    total_p2 = len(st.session_state.p2_order)
+    current_img_file = st.session_state.p2_order[idx]
+    
+    img_b64 = get_image_base64(current_img_file)
+    img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
+
+    st.markdown(f"""
+        <div class="sticky-image">
+            <p style="margin:0; color: #888; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1} / {total_p2})</p>
+            <img src="{img_src}" width="480" style="max-height:300px; object-fit:contain;"><br>
+            <small style="color: #999;">파일명: {current_img_file}</small> 
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
+    step_responses = {}
 
     # --- (2) 수용 의도 평가 ---
     st.subheader("2. 수용 의도 평가")
@@ -200,7 +223,7 @@ elif st.session_state.page == 'main_survey':
         for score in range(1, 8):
             with cols[score]:
                 checked = st.session_state[key_name] == score
-                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                if st.button(f"{score}", key=f"p2_{key_name}_acc_{score}", use_container_width=True, type="primary" if checked else "secondary"):
                     st.session_state[key_name] = score
                     st.rerun()
 
@@ -228,7 +251,7 @@ elif st.session_state.page == 'main_survey':
         for score in range(1, 8):
             with cols[score]:
                 checked = st.session_state[key_name] == score
-                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                if st.button(f"{score}", key=f"p2_{key_name}_re_{score}", use_container_width=True, type="primary" if checked else "secondary"):
                     st.session_state[key_name] = score
                     st.rerun()
 
@@ -239,60 +262,19 @@ elif st.session_state.page == 'main_survey':
 
     st.write("---")    
  
-    # [하단 수동 스크롤 버튼]
-    components.html(
-        """
-        <script>
-        function goToTop() {
-            var targets = [
-                window.parent.document.querySelector('[data-testid="stAppViewContainer"]'),
-                window.parent.document.querySelector('[data-testid="stMain"]'),
-                window.parent.document.querySelector('.main'),
-                window.parent.document.documentElement,
-                window.parent.document.body,
-                window.parent
-            ];
-            targets.forEach(function(t) {
-                if(t) {
-                    if(t.scrollTop !== undefined) t.scrollTop = 0;
-                    if(t.scrollTo) t.scrollTo({top: 0, behavior: 'instant'});
-                }
-            });
-        }
-        </script>
-        <button onclick="goToTop()" style="
-            display: block;
-            width: 100%;
-            padding: 12px;
-            background-color: #F0F2F6;
-            color: #31333F;
-            text-align: center;
-            border-radius: 8px;
-            font-weight: bold;
-            border: 1px solid #DAE1E7;
-            cursor: pointer;
-            font-size: 16px;
-            font-family: inherit;
-        ">
-        ⬆️ 화면 맨 위로
-        </button>
-        """,
-        height=60
-    )
+    components.html("""<script>function goToTop(){var t=[window.parent.document.querySelector('.main')];t.forEach(function(e){if(e)e.scrollTop=0;});}</script><button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>""", height=60)
     
     # --- 이동 버튼 및 구글 시트 저장 로직 ---
-    if idx < total_sets - 1:
-        if st.button("평가 완료 -> 다음 이미지로"):
+    if idx < total_p2 - 1:
+        if st.button("평가 완료 -> 다음 이미지 쌍으로"):
             st.session_state.all_responses.update(step_responses)
-            st.session_state.current_idx += 1
+            st.session_state.p2_idx += 1
             
-            with st.spinner("다음 문항을 불러오는 중..."):
-                import time 
-                time.sleep(0.1) 
-            
+            with st.spinner("로딩 중..."):
+                import time; time.sleep(0.1) 
             st.rerun()
     else:
-        if st.button("모든 설문 완료 및 제출"):
+        if st.button("✅ 모든 설문 완료 및 제출"):
             st.session_state.all_responses.update(step_responses)
             final_data = {**st.session_state.user_data, **st.session_state.all_responses}
     
@@ -315,5 +297,5 @@ elif st.session_state.page == 'main_survey':
     
             conn.update(worksheet=real_sheet_name, data=updated_df)
     
-            st.success("데이터가 성공적으로 저장되었습니다! 응답해주셔서 감사합니다!")
+            st.success("데이터가 성공적으로 저장되었습니다! 긴 설문에 응답해주셔서 진심으로 감사합니다!")
             st.balloons()
