@@ -111,23 +111,6 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 [수정된 슬라이더 마법 CSS] 빨간색 채워짐 완벽 제거 */
-        
-        /* 1. 슬라이더 전체 바탕 트랙을 옅은 회색으로 고정합니다. */
-        div[data-testid="stSelectSlider"] div[data-baseweb="slider"] > div > div:first-child {{
-            background-color: #e6e6f0 !important; 
-        }}
-        
-        /* 2. [핵심] 트랙 안에서 채워지며 따라오는 빨간색 막대를 아예 '투명'하게 지워버립니다. */
-        div[data-testid="stSelectSlider"] div[data-baseweb="slider"] > div > div:first-child > div {{
-            background-color: transparent !important; 
-        }}
-        
-        /* 3. 움직이는 원(Thumb)은 스트림릿 기본 포인트 컬러(빨간색)로 살려둡니다. */
-        div[data-testid="stSelectSlider"] div[role="slider"] {{
-            background-color: #ff4b4b !important; 
-            border-color: #ff4b4b !important;
-        }}
         </style>
         
         <div class="sticky-image">
@@ -158,7 +141,7 @@ elif st.session_state.page == 'main_survey':
         with cols[0]: st.markdown(f"<div style='text-align:right; line-height:80px;'>{l}</div>", unsafe_allow_html=True)
         with cols[1]: 
             key_name = f"{current_img_file}_Left_emo{i+1}"
-            step_responses[key_name] = st.select_slider(f"slider_{current_img_file}_L_emo{i}", options=[1,2,3,4,5,6,7], value=4, label_visibility="collapsed")
+            step_responses[key_name] = st.radio( f"slider_{current_img_file}_L_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed" )
         with cols[2]: st.markdown(f"<div style='text-align:left; line-height:80px;'>{r}</div>", unsafe_allow_html=True)
 
     st.write("---")
@@ -170,7 +153,7 @@ elif st.session_state.page == 'main_survey':
         with cols[0]: st.markdown(f"<div style='text-align:right; line-height:80px;'>{l}</div>", unsafe_allow_html=True)
         with cols[1]: 
             key_name = f"{current_img_file}_Right_emo{i+1}"
-            step_responses[key_name] = st.select_slider(f"slider_{current_img_file}_R_emo{i}", options=[1,2,3,4,5,6,7], value=4, label_visibility="collapsed")
+            step_responses[key_name] = st.radio( f"slider_{current_img_file}_R_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed" )
         with cols[2]: st.markdown(f"<div style='text-align:left; line-height:80px;'>{r}</div>", unsafe_allow_html=True)
 
     st.write("---")
@@ -184,7 +167,7 @@ elif st.session_state.page == 'main_survey':
         with cols[0]: st.write("전혀 아니다")
         with cols[1]: 
             key_name = f"{current_img_file}_acc{i+1}"
-            step_responses[key_name] = st.select_slider(f"slider_{current_img_file}_acc{i}", options=[1,2,3,4,5,6,7], value=4, label_visibility="collapsed")
+            step_responses[key_name] = st.radio( f"slider_{current_img_file}_acc{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed" )
         with cols[2]: st.write("매우 그렇다")
 
     st.write("---")
@@ -198,7 +181,7 @@ elif st.session_state.page == 'main_survey':
         with cols[0]: st.write("전혀 아니다")
         with cols[1]: 
             key_name = f"{current_img_file}_re{i+1}"
-            step_responses[key_name] = st.select_slider(f"slider_{current_img_file}_re{i}", options=[1,2,3,4,5,6,7], value=4, label_visibility="collapsed")
+            step_responses[key_name] = st.radio( f"slider_{current_img_file}_re{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed" )
         with cols[2]: st.write("매우 그렇다")
 
     st.write("---")    
