@@ -96,7 +96,7 @@ def apply_common_css():
         }
         /* 🌟 이미지 크기를 320px로 키우고 최대폭을 넓혔습니다 */
         .sticky-image img {
-            max-height: 600px; 
+            max-height: 1000px; 
             width: auto;
             max-width: 100%;
             object-fit: contain;
