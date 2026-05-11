@@ -211,9 +211,20 @@ elif st.session_state.page == 'main_survey':
 
     # 이동 버튼 로직
     if idx < total_sets - 1:
+        # 기존 버튼 코드를 아래 내용으로 교체하세요
         if st.button("평가 완료 -> 다음 이미지로"):
+            # 1. 현재까지의 응답 저장
             st.session_state.all_responses.update(step_responses)
+            
+            # 2. 다음 이미지 인덱스로 증가
             st.session_state.current_idx += 1
+            
+            # 3. [추가] 화면 환기 및 브라우저 상태 리셋을 위한 짧은 대기
+            with st.spinner("다음 문항을 불러오는 중..."):
+                import time # (파일 최상단에 import time이 없다면 여기서 수행해도 됩니다)
+                time.sleep(0.1) 
+            
+            # 4. 페이지 새로고침 (이때 위에서 넣은 스크롤 자바스크립트가 실행됩니다)
             st.rerun()
     else:
         if st.button("모든 설문 완료 및 제출"):
