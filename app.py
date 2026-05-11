@@ -94,6 +94,9 @@ if st.session_state.page == 'intro':
     - 모든 응답은 익명으로 처리되며 연구 목적으로만 사용됩니다.
     - 설문조사 참여에 동의한다면 설문 시작하기 버튼을 눌러 설문을 시작해주십시오.
     """)
+
+    st.warning("⚠️ 중간에 브라우저를 새로고침하면 응답이 초기화되니 주의해 주세요.")
+    
     if st.button("설문 시작하기"):
         st.session_state.page = 'demographics'
         st.rerun()
