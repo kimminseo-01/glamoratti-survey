@@ -104,7 +104,7 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
-    # 🌟 고정 이미지 및 업데이트된 라디오 버튼 CSS 통합
+    # 상단 고정 이미지 관련 CSS
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -112,46 +112,9 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* radio 전체 컨테이너 폭 강제 */
-        div[data-testid="stRadio"] {{
-            width: 100% !important;
-        }}
-
-        /* 내부 wrapper 폭 강제 */
-        div[data-testid="stRadio"] > div {{
-            width: 100% !important;
-        }}
-
-        /* radio group */
-        div[role="radiogroup"] {{
-            width: 100% !important;
-            display: flex !important;
-            flex-direction: row !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            gap: 0 !important;
-        }}
-
-        /* 각 선택지 균등 분배 */
-        div[role="radiogroup"] label {{
-            flex: 1 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            margin: 0 !important;
-        }}
-
-        /* 원 + 숫자 정렬 */
-        div[role="radiogroup"] label > div {{
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }}
-
-        /* 위아래 간격 */
-        div[data-testid="stRadio"] {{
-            margin-top: -8px !important;
-            margin-bottom: -8px !important;
+        /* 버튼을 둥글게 하거나 높이를 조절하고 싶다면 아래 CSS를 활용할 수 있습니다 */
+        div[data-testid="stButton"] button {{
+            height: 40px;
         }}
         </style>
         
@@ -178,13 +141,25 @@ elif st.session_state.page == 'main_survey':
     # 1-1. 좌측 이미지 평가
     st.markdown('<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>', unsafe_allow_html=True)
     for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2.5, 10, 2.5])
+        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
+
         with cols[0]:
             st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
-        with cols[1]: 
-            key_name = f"{current_img_file}_Left_emo{i+1}"
-            step_responses[key_name] = st.radio(f"radio_{current_img_file}_L_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
-        with cols[2]:
+
+        key_name = f"{current_img_file}_Left_emo{i+1}"
+        if key_name not in st.session_state:
+            st.session_state[key_name] = 4
+
+        for score in range(1, 8):
+            with cols[score]:
+                checked = st.session_state[key_name] == score
+                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                    st.session_state[key_name] = score
+                    st.rerun()  # 즉시 색상을 변경하기 위해 재실행
+
+        step_responses[key_name] = st.session_state[key_name]
+
+        with cols[8]:
             st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
 
     st.write("---")
@@ -192,13 +167,25 @@ elif st.session_state.page == 'main_survey':
     # 1-2. 우측 이미지 평가
     st.markdown("<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>", unsafe_allow_html=True)
     for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2.5, 10, 2.5])
+        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
+
         with cols[0]:
             st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
-        with cols[1]: 
-            key_name = f"{current_img_file}_Right_emo{i+1}"
-            step_responses[key_name] = st.radio(f"radio_{current_img_file}_R_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
-        with cols[2]:
+
+        key_name = f"{current_img_file}_Right_emo{i+1}"
+        if key_name not in st.session_state:
+            st.session_state[key_name] = 4
+
+        for score in range(1, 8):
+            with cols[score]:
+                checked = st.session_state[key_name] == score
+                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                    st.session_state[key_name] = score
+                    st.rerun()
+
+        step_responses[key_name] = st.session_state[key_name]
+
+        with cols[8]:
             st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
 
     st.write("---")
@@ -208,13 +195,25 @@ elif st.session_state.page == 'main_survey':
     acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
     for i, item in enumerate(acc_items):
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-        cols = st.columns([2.5, 10, 2.5])
+        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
+
         with cols[0]:
             st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
-        with cols[1]: 
-            key_name = f"{current_img_file}_acc{i+1}"
-            step_responses[key_name] = st.radio(f"radio_{current_img_file}_acc{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
-        with cols[2]:
+
+        key_name = f"{current_img_file}_acc{i+1}"
+        if key_name not in st.session_state:
+            st.session_state[key_name] = 4
+
+        for score in range(1, 8):
+            with cols[score]:
+                checked = st.session_state[key_name] == score
+                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                    st.session_state[key_name] = score
+                    st.rerun()
+
+        step_responses[key_name] = st.session_state[key_name]
+
+        with cols[8]:
             st.markdown('<div style="text-align:left; padding-top:8px; font-size:15px;">매우 그렇다</div>', unsafe_allow_html=True)
 
     st.write("---")
@@ -224,13 +223,25 @@ elif st.session_state.page == 'main_survey':
     re_items = ["실루엣", "색상", "소재", "디테일"]
     for i, item in enumerate(re_items):
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-        cols = st.columns([2.5, 10, 2.5])
+        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
+
         with cols[0]:
             st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
-        with cols[1]: 
-            key_name = f"{current_img_file}_re{i+1}"
-            step_responses[key_name] = st.radio(f"radio_{current_img_file}_re{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
-        with cols[2]:
+
+        key_name = f"{current_img_file}_re{i+1}"
+        if key_name not in st.session_state:
+            st.session_state[key_name] = 4
+
+        for score in range(1, 8):
+            with cols[score]:
+                checked = st.session_state[key_name] == score
+                if st.button(f"{score}", key=f"{key_name}_{score}", use_container_width=True, type="primary" if checked else "secondary"):
+                    st.session_state[key_name] = score
+                    st.rerun()
+
+        step_responses[key_name] = st.session_state[key_name]
+
+        with cols[8]:
             st.markdown('<div style="text-align:left; padding-top:8px; font-size:15px;">매우 그렇다</div>', unsafe_allow_html=True)
 
     st.write("---")    
