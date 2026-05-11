@@ -83,25 +83,42 @@ elif st.session_state.page == 'demographics':
 # --- 4. [3페이지] 메인 설문 (감성 평가 좌/우 분리 버전) ---
 elif st.session_state.page == 'main_survey':
     idx = st.session_state.current_idx
-    # 🌟 [해결책] 1. 보이지 않는 앵커(닻)를 맨 위에 박습니다.
-    st.markdown("<div id='top-of-page'></div>", unsafe_allow_html=True)
-
-    # 🌟 [해결책] 2. 가장 강력한 3단계 시간차 스크롤 리셋
-    # 'section.main'의 scrollTop을 0으로 만드는 것이 가장 확실합니다.
+    
+    # 🌟 [최후의 수단] 모든 스크롤 가능 요소를 다 찾아내서 0으로 박아버리는 스크립트
     components.html(
         f"""
         <script>
-            function forceScroll() {{
-                var mainSection = window.parent.document.querySelector('section.main');
-                if (mainSection) {{
-                    mainSection.scrollTop = 0;
-                }}
-            }}
-            forceScroll(); 
-            setTimeout(forceScroll, 300); 
-            setTimeout(forceScroll, 1000); 
+            const forceScrollTop = () => {{
+                const parentDoc = window.parent.document;
+                // 1. 스트림릿의 주요 스크롤 컨테이너들을 모두 타겟팅
+                const selectors = [
+                    '.main', 
+                    'section.main', 
+                    '.stApp', 
+                    '#root',
+                    'window'
+                ];
+                
+                selectors.forEach(selector => {{
+                    try {{
+                        let el = (selector === 'window') ? window.parent : parentDoc.querySelector(selector);
+                        if (el) {{
+                            if (selector === 'window') {{
+                                el.scrollTo(0, 0);
+                            }} else {{
+                                el.scrollTop = 0;
+                            }}
+                        }}
+                    }} catch (e) {{ console.log('scroll error', e); }}
+                }});
+            }};
+
+            // 시간차를 두고 3번 실행 (이미지가 로딩되는 시점까지 커버)
+            forceScrollTop();
+            setTimeout(forceScrollTop, 300);
+            setTimeout(forceScrollTop, 800);
         </script>
-        # <--- 이 주석 한 줄이 매번 스크립트를 새로 실행하게 만듭니다!
+        <div style="display:none">{idx}</div> 
         """,
         height=0
     )
