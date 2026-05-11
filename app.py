@@ -184,27 +184,46 @@ elif st.session_state.page == 'main_survey':
 
     st.write("---")
     
-    st.markdown(
+    components.html(
         """
-        <a href="javascript:void(0);" onclick="window.parent.document.querySelector('.main').scrollTop=0;" style="
+        <script>
+        function goToTop() {
+            // 스트림릿 버전에 따라 스크롤되는 구역의 이름이 다를 수 있어 모든 구역을 찌릅니다.
+            var targets = [
+                window.parent.document.querySelector('[data-testid="stAppViewContainer"]'),
+                window.parent.document.querySelector('[data-testid="stMain"]'),
+                window.parent.document.querySelector('.main'),
+                window.parent.document.documentElement,
+                window.parent.document.body,
+                window.parent
+            ];
+            targets.forEach(function(t) {
+                if(t) {
+                    if(t.scrollTop !== undefined) t.scrollTop = 0;
+                    if(t.scrollTo) t.scrollTo({top: 0, behavior: 'instant'});
+                }
+            });
+        }
+        </script>
+        <button onclick="goToTop()" style="
             display: block;
             width: 100%;
             padding: 12px;
             background-color: #F0F2F6;
             color: #31333F;
             text-align: center;
-            text-decoration: none;
             border-radius: 8px;
             font-weight: bold;
             border: 1px solid #DAE1E7;
-            margin-bottom: 20px; 
+            cursor: pointer;
+            font-size: 16px;
+            font-family: inherit;
         ">
         ⬆️ 화면 맨 위로
-        </a>
+        </button>
         """,
-        unsafe_allow_html=True
+        height=60
     )
-
     # 이동 버튼 로직
     if idx < total_sets - 1:
         # 기존 버튼 코드를 아래 내용으로 교체하세요
