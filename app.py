@@ -111,30 +111,15 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 1. 보기 싫은 영문 라벨 숨김 */
+        /* 1. 영문 라벨명(radio_pair...) 숨김 */
         label[data-testid="stWidgetLabel"] {{
             display: none !important;
         }}
         
-        /* 2. 가장 바깥 박스가 쪼그라드는 현상 방지 (무조건 100% 넓히기) */
-        div[data-testid="stRadio"] {{
-            width: 100% !important;
-            display: block !important;
-        }}
-        
-        /* 3. 라디오 그룹도 100% 꽉 채우기 */
+        /* 2. 🌟 질문자님 아이디어: 덩어리 전체에 왼쪽 여백을 주어 중앙으로 밀어넣기 */
         div[role="radiogroup"] {{
-            width: 100% !important;
-            display: flex !important;
-            flex-wrap: nowrap !important;
-        }}
-        
-        /* 4. 가장 핵심: 7개의 버튼이 무조건 똑같은 크기로(1/n) 공간을 나눠 가짐 */
-        div[role="radiogroup"] > label {{
-            flex: 1 1 0% !important; 
-            justify-content: center !important; /* 나눠 가진 구역 안에서 동그라미를 한가운데로! */
-            margin: 0 !important;
-            padding: 0 !important;
+            margin-left: 15% !important; /* 이 숫자를 조절해서 좌우 밸런스를 맞추세요! */
+            width: auto !important;
         }}
         </style>
         
