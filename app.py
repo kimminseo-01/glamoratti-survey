@@ -83,18 +83,15 @@ elif st.session_state.page == 'demographics':
 # --- 4. [3페이지] 메인 설문 (감성 평가 좌/우 분리 버전) ---
 elif st.session_state.page == 'main_survey':
     idx = st.session_state.current_idx
-    # 1. 페이지 맨 위에 보이지 않는 '닻'을 설치합니다.
-    st.markdown("<div id='top'></div>", unsafe_allow_html=True)
-
-    # 2. 자바스크립트로 저 'top'이라는 아이디를 가진 위치로 이동하라고 명령합니다.
-    # (이번에는 window가 아니라 실제 내용이 담긴 컨테이너를 타겟팅합니다.)
-    st.components.v1.html(
+    components.html(
         f"""
         <script>
-            var mainContainer = window.parent.document.querySelector('.main');
-            if (mainContainer) {{
-                mainContainer.scrollTo({{ top: 0, behavior: 'instant' }});
-            }}
+            setTimeout(function() {{
+                var mainSection = window.parent.document.querySelector('section.main');
+                if (mainSection) {{
+                    mainSection.scrollTo({{ top: 0, behavior: 'instant' }});
+                }}
+            }}, 100);
         </script>
         """,
         height=0
