@@ -104,7 +104,7 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
-    # 🌟 [궁극의 해결책] 스트림릿 구조를 강제로 100% 넓히는 무적의 CSS
+    # 🌟 [수정된 CSS] 부작용 없이 깔끔하게 구글 폼 스타일만 적용
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -112,43 +112,38 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 1. 라디오 버튼의 가장 바깥쪽 뼈대부터 강제 100% 확장 */
-        div[data-testid="stRadio"] {{
-            width: 100% !important;
-        }}
-        
-        /* 2. 스트림릿이 만들어두는 모든 중간 박스들을 무조건 flex로 쫙 폅니다 */
-        div[data-testid="stRadio"] > div {{
+        /* 1. 라디오 버튼 컨테이너를 가로(row)로 강제 정렬하고 100% 꽉 채웁니다. */
+        div[role="radiogroup"] {{
             display: flex !important;
-            flex-direction: row !important;
+            flex-direction: row !important; /* 세로로 찌그러지는 현상 방지 */
             justify-content: space-between !important;
             width: 100% !important;
-            gap: 0 !important; /* 스트림릿이 기본으로 넣는 간격 파괴 */
         }}
         
-        /* 3. 라디오 버튼(숫자+동그라미) 하나하나가 화면의 1/7을 무조건 차지하도록 강제 */
-        div[data-testid="stRadio"] label {{
-            flex: 1 1 100% !important; /* 빈 공간을 전부 동일하게 나눠가짐 */
-            max-width: none !important;
-            min-width: 0 !important;
+        /* 2. 각 버튼(숫자+동그라미)을 7등분하여 넓게 퍼뜨리고, 숫자를 위로 올립니다. */
+        label[data-baseweb="radio"] {{
+            flex: 1 !important; /* 7개 버튼이 동일한 간격으로 벌어짐 */
             display: flex !important;
             flex-direction: column-reverse !important; /* 숫자 위, 동그라미 아래 */
             align-items: center !important;
             justify-content: center !important;
             margin: 0 !important;
-            padding: 0 !important;
         }}
         
-        /* 4. 동그라미 부분의 고집스러운 좌우 여백 파괴 */
-        div[data-testid="stRadio"] label > div:first-child {{
-            margin: 0 !important;
-            padding: 0 !important;
+        /* 3. 동그라미의 쓸데없는 여백 제거 */
+        label[data-baseweb="radio"] > div:first-child {{
+            margin-right: 0 !important;
         }}
         
-        /* 5. 숫자를 동그라미 위로 살짝 띄워줌 */
-        div[data-testid="stRadio"] label > div:last-child {{
-            margin: 0 0 8px 0 !important;
-            padding: 0 !important;
+        /* 4. 숫자의 여백 제거 및 동그라미와 살짝 띄우기 */
+        label[data-baseweb="radio"] > div:last-child {{
+            margin-left: 0 !important;
+            margin-bottom: 8px !important;
+        }}
+
+        /* 5. 튀어나왔던 영문 라벨명(radio_pair...) 완벽하게 다시 숨김 */
+        label[data-testid="stWidgetLabel"] {{
+            display: none !important;
         }}
         </style>
         
