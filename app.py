@@ -89,8 +89,7 @@ elif st.session_state.page == 'main_survey':
             window.parent.window.scrollTo(0,0);
         </script>
         """,
-        height=0,
-        key=f"scroll_script_{idx}" # 인덱스가 바뀔 때마다 스크롤을 다시 올립니다.
+        height=0
     )
     total_sets = len(st.session_state.random_order)
     current_img_file = st.session_state.random_order[idx]
