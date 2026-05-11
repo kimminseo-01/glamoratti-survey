@@ -1,6 +1,7 @@
 import streamlit as st
 import base64
 import random  # NEW: 랜덤 순서를 위해 필요
+import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
@@ -81,6 +82,15 @@ elif st.session_state.page == 'demographics':
 
 # --- 4. [3페이지] 메인 설문 (감성 평가 좌/우 분리 버전) ---
 elif st.session_state.page == 'main_survey':
+    components.html(
+        f"""
+        <script>
+            window.parent.window.scrollTo(0,0);
+        </script>
+        """,
+        height=0
+    )
+    
     idx = st.session_state.current_idx
     total_sets = len(st.session_state.random_order)
     current_img_file = st.session_state.random_order[idx]
