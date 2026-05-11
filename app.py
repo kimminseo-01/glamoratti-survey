@@ -104,6 +104,7 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
+    # 🌟 [원상복구] 스트림릿 기본 가로 라디오 버튼 + 라벨 숨김 처리
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -111,44 +112,15 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 1. 라디오 버튼 그룹의 바깥 껍데기를 화면에 100% 꽉 채웁니다 */
-        div[data-testid="stRadio"] {{
-            width: 100% !important;
-        }}
-        
-        /* 2. [가장 핵심] Grid를 사용하여 무조건 7칸으로 쪼개버립니다 */
-        div[role="radiogroup"] {{
-            display: grid !important;
-            grid-template-columns: repeat(7, 1fr) !important; /* 1:1:1:1:1:1:1 비율로 강제 분할 */
-            width: 100% !important;
-            gap: 0 !important;
-        }}
-        
-        /* 3. 각 7개의 칸 안에서 숫자(위)와 동그라미(아래)를 가운데 정렬합니다 */
-        label[data-baseweb="radio"] {{
-            display: flex !important;
-            flex-direction: column-reverse !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-        }}
-        
-        /* 4. 동그라미 우측 쓸데없는 여백 제거 */
-        label[data-baseweb="radio"] > div:first-child {{
-            margin-right: 0 !important;
-        }}
-        
-        /* 5. 숫자 좌측 여백 제거 및 동그라미와 살짝 띄우기 */
-        label[data-baseweb="radio"] > div:last-child {{
-            margin-left: 0 !important;
-            margin-bottom: 8px !important;
-        }}
-        
-        /* 6. 숨겨진 영문 라벨 완전 제거 */
+        /* 1. 보기 싫게 튀어나왔던 영문 라벨명(radio_pair...)을 다시 숨깁니다. */
         label[data-testid="stWidgetLabel"] {{
             display: none !important;
+        }}
+        
+        /* 2. 스트림릿 기본 라디오 버튼들의 간격을 살짝 넓혀서 답답하지 않게 만듭니다. */
+        div[role="radiogroup"] {{
+            width: 100% !important;
+            justify-content: space-around !important; /* 양옆으로 여유롭게 퍼지도록 설정 */
         }}
         </style>
         
@@ -157,8 +129,7 @@ elif st.session_state.page == 'main_survey':
             <img src="{img_src}" width="480"><br>
             <small style="color: #999;">파일명: {current_img_file}</small> 
         </div>
-        """, unsafe_allow_html=True)
-        
+        """, unsafe_allow_html=True)        
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     # 이후 문항 코드들은 들여쓰기 없이(원래대로) 쭉 작성하시면 됩니다.
