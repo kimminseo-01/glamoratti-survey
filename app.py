@@ -131,7 +131,7 @@ if st.session_state.page == 'intro':
 elif st.session_state.page == 'demographics':
     st.title("인구통계학적 정보")
     st.write("---")
-    gender = st.radio("귀하의 성별은 무엇입니까? *", ["예", "아니오"], index=None)
+    gender = st.radio("본 설문조사는 한국 거주 여성을 대상으로 하고 있습니다. 귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
     age = st.radio("귀하의 연령은 어떻게 되십니까? (만 나이 기준) *", ["만 19세 ~ 만 29 세", "만 30 세 ~ 만 39 세", "만 40 세 ~ 만 49 세", "만 50 세 ~ 만 59 세", "만 60 이상"], index=None)
     edu = st.radio("귀하의 최종 학력은 무엇입니까? *", ["고등학교 졸업", "대학교 재학", "대학교 졸업", "대학원 재학", "대학원 졸업"], index=None)
     major = st.radio("귀하의 현재 직종 혹은 전공 계열은 무엇입니까? *", ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "그 외"], index=None)
