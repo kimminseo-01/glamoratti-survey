@@ -5,6 +5,9 @@ import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
+# --- 0. 페이지 설정 (이미지를 크게 보기 위해 반드시 'wide'로 설정해야 합니다) ---
+st.set_page_config(layout="wide")
+
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
     st.session_state.page = 'intro'
@@ -37,48 +40,32 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 자동 스크롤 최종 안정화 버전 (이름 수정됨) ---
+# --- 🌟 자동 스크롤 최종 안정화 버전 ---
 def auto_scroll_top_script():
     return """
     <script>
     function scrollParent() {
-        // 전체 브라우저 스크롤
         window.parent.scrollTo(0, 0);
-
-        // Streamlit 내부 컨테이너들
-        const selectors = [
-            '.main',
-            '[data-testid="stAppViewContainer"]',
-            '[data-testid="stMain"]',
-            'section.main'
-        ];
-
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
             if (el) {
                 el.scrollTop = 0;
                 if (el.scrollTo) {
-                    el.scrollTo({
-                        top: 0,
-                        behavior: 'instant'
-                    });
+                    el.scrollTo({ top: 0, behavior: 'instant' });
                 }
             }
         });
-
-        // html/body 강제 초기화
         window.parent.document.documentElement.scrollTop = 0;
         window.parent.document.body.scrollTop = 0;
     }
-
-    // 여러 번 실행해서 Streamlit 렌더링 타이밍 대응
     setTimeout(scrollParent, 50);
     setTimeout(scrollParent, 150);
     setTimeout(scrollParent, 300);
     </script>
     """
 
-# --- 공통 CSS (이미지 크기 대폭 상향) ---
+# --- 🌟 공통 CSS (이미지 크기를 대폭 상향 조정) ---
 def apply_common_css():
     st.markdown("""
         <style>
@@ -90,19 +77,19 @@ def apply_common_css():
             width: 100%; 
             background-color: white; 
             z-index: 1000; 
-            padding: 10px 0; 
+            padding: 15px 0; 
             border-bottom: 2px solid #ddd; 
             text-align: center; 
         }
-        /* 🌟 이미지 크기를 320px로 키우고 최대폭을 넓혔습니다 */
+        /* 🌟 이미지 세로 길이를 450px까지 허용하고 폭을 넓혔습니다 */
         .sticky-image img {
-            max-height: 2000px; 
-            width: auto;
-            max-width: 100%;
+            max-height: 450px !important; 
+            width: auto !important;
+            max-width: 95% !important;
             object-fit: contain;
         }
-        /* 🌟 이미지 영역이 커진 만큼 본문 시작 위치를 420px로 조정했습니다 */
-        .spacer { margin-top: 200px; }
+        /* 🌟 이미지가 커진 만큼 본문이 가려지지 않게 여백을 580px로 조정했습니다 */
+        .spacer { margin-top: 580px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
@@ -156,7 +143,8 @@ elif st.session_state.page == 'part1_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
+    # 🌟 파트 1 이미지 너비를 강제로 850px로 키웠습니다.
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}" style="width:850px;"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
@@ -240,8 +228,8 @@ elif st.session_state.page == 'part2_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    # 🌟 이미지 표시 너비를 650으로 키웠습니다
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}" width="650"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
+    # 🌟 파트 2 이미지 표시 너비를 1100px로 대폭 키웠습니다.
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}" style="width:1100px;"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
