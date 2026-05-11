@@ -104,20 +104,39 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
+    # 기존 CSS에 구글 폼 스타일(라디오 버튼 세로 정렬)을 추가한 버전입니다.
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
         .sticky-image {{ position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 0; border-bottom: 2px solid #ddd; text-align: center; }}
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
+        
+        /* 🌟 [여기서부터 추가됨] 구글 폼 스타일 7점 척도 만들기 */
+        /* 1. 라디오 버튼 그룹 전체를 양옆으로 균등하게 쫙 펼칩니다 */
+        div[role="radiogroup"] {{
+            justify-content: space-between;
+            width: 100%;
+        }}
+        /* 2. 글자는 위로, 동그라미는 아래로 순서를 바꿉니다 (column-reverse) */
+        div[role="radiogroup"] > label {{
+            flex-direction: column-reverse !important; 
+            align-items: center;
+            gap: 8px; /* 숫자와 동그라미 사이의 간격 */
+        }}
+        /* 3. 기본적으로 들어가는 좌측 여백을 없애서 가운데 정렬을 맞춥니다 */
+        div[role="radiogroup"] > label > div:first-child {{
+            margin-right: 0px !important;
+        }}
         </style>
+        
         <div class="sticky-image">
             <p style="margin:0; color: #888; font-size: 0.9em;">전체 13개 중 {idx+1}번째 평가</p>
             <img src="{img_src}" width="480"><br>
             <small style="color: #999;">파일명: {current_img_file}</small> 
         </div>
         """, unsafe_allow_html=True)
-
+        
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     # 이후 문항 코드들은 들여쓰기 없이(원래대로) 쭉 작성하시면 됩니다.
