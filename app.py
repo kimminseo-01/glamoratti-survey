@@ -67,7 +67,7 @@ elif st.session_state.page == 'demographics':
         else:
             st.session_state.user_data.update({
                 "성별": gender, "연령": age, "학력": edu, 
-                "분": major, "의류지출": spending
+                "분야": major, "의류지출": spending
             })
             st.session_state.page = 'main_survey'
             st.rerun()
