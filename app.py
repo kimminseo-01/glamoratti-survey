@@ -198,10 +198,32 @@ elif st.session_state.page == 'part1_survey':
     </div>
     """, height=80)
     
+    # 🌟 [수정됨] 파트 1 이동 버튼 로직
     if st.button("다음 이미지로 ->", use_container_width=True):
+        # 먼저 강제 스크롤 스크립트 실행
+        components.html("""
+        <script>
+        window.parent.scrollTo(0,0);
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
+        selectors.forEach(selector => {
+            const el = window.parent.document.querySelector(selector);
+            if (el) {
+                el.scrollTop = 0;
+                if (el.scrollTo) { el.scrollTo({top: 0, behavior: 'instant'}); }
+            }
+        });
+        window.parent.document.documentElement.scrollTop = 0;
+        window.parent.document.body.scrollTop = 0;
+        </script>
+        """, height=0)
+
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
-        if st.session_state.p1_idx >= total_p1: st.session_state.page = 'part2_intro'
+        if st.session_state.p1_idx >= total_p1:
+            st.session_state.page = 'part2_intro'
+        
+        import time
+        time.sleep(0.15)
         st.rerun()
 
 # --- 5. [4페이지] 파트 2 중간 안내 ---
@@ -286,9 +308,31 @@ elif st.session_state.page == 'part2_survey':
     """, height=80)
     
     if idx < total_p2 - 1:
+        # 🌟 [수정됨] 파트 2 이동 및 제출 버튼 로직
+    if idx < total_p2 - 1:
         if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
+            # 먼저 강제 스크롤 스크립트 실행
+            components.html("""
+            <script>
+            window.parent.scrollTo(0,0);
+            const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
+            selectors.forEach(selector => {
+                const el = window.parent.document.querySelector(selector);
+                if (el) {
+                    el.scrollTop = 0;
+                    if (el.scrollTo) { el.scrollTo({top: 0, behavior: 'instant'}); }
+                }
+            });
+            window.parent.document.documentElement.scrollTop = 0;
+            window.parent.document.body.scrollTop = 0;
+            </script>
+            """, height=0)
+
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
+            
+            import time
+            time.sleep(0.15)
             st.rerun()
     else:
         if st.button("✅ 모든 설문 완료 및 제출", use_container_width=True):
