@@ -111,16 +111,21 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 [슬라이더 마법 CSS] 바 색상 지우기 */
+        /* 🌟 [수정된 슬라이더 마법 CSS] 빨간색 채워짐 완벽 제거 */
         
-        /* 1. 슬라이더가 채워지는 부분(기본 빨간색)을 빈 막대와 동일한 옅은 회색으로 덮어씁니다. */
+        /* 1. 슬라이더 전체 바탕 트랙을 옅은 회색으로 고정합니다. */
         div[data-testid="stSelectSlider"] div[data-baseweb="slider"] > div > div:first-child {{
             background-color: #e6e6f0 !important; 
         }}
         
-        /* 2. 혹시라도 원(Thumb) 색상까지 지워지는 것을 방지해 명시적으로 빨간색을 지정합니다. */
+        /* 2. [핵심] 트랙 안에서 채워지며 따라오는 빨간색 막대를 아예 '투명'하게 지워버립니다. */
+        div[data-testid="stSelectSlider"] div[data-baseweb="slider"] > div > div:first-child > div {{
+            background-color: transparent !important; 
+        }}
+        
+        /* 3. 움직이는 원(Thumb)은 스트림릿 기본 포인트 컬러(빨간색)로 살려둡니다. */
         div[data-testid="stSelectSlider"] div[role="slider"] {{
-            background-color: #ff4b4b !important; /* 스트림릿 기본 포인트 컬러 */
+            background-color: #ff4b4b !important; 
             border-color: #ff4b4b !important;
         }}
         </style>
