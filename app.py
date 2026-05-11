@@ -26,7 +26,7 @@ if 'p1_order' not in st.session_state:
 
 # 파트 2 (이미지 쌍 pair) 랜덤 리스트
 if 'p2_order' not in st.session_state:
-    p2_list = [f"pair{i}.png" for i in range(1, 14)] 
+    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
     random.shuffle(p2_list)
     st.session_state.p2_order = p2_list
 
@@ -143,7 +143,7 @@ elif st.session_state.page == 'part1_survey':
     
     step_responses = {}
     adj_pairs = [("촌스럽다", "세련되다"), ("소박하다", "고급스럽다"), ("수수하다", "화려하다"), ("순수하다", "섹시하다"), ("투박하다", "우아하다"), ("단조롭다", "드라마틱하다"), ("온화하다", "강렬하다"), ("여리다", "단단하다"), ("부드럽다", "날카롭다"), ("복잡하다", "간결하다"), ("밋밋하다", "화사하다")]
-    st.subheader("1. 감성 인지 평가")
+    st.subheader("1. 감성 평가")
 
     for i, (l, r) in enumerate(adj_pairs):
         cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
