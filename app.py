@@ -111,26 +111,30 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 1. 영문 라벨명(radio_pair...) 완벽 숨김 */
+        /* 1. 보기 싫은 영문 라벨 숨김 */
         label[data-testid="stWidgetLabel"] {{
             display: none !important;
         }}
         
-        /* 2. 라디오 버튼의 겉포장지를 가운데 칼럼(60%) 폭에 꽉 차게 100%로 늘려줍니다 */
+        /* 2. 가장 바깥 박스가 쪼그라드는 현상 방지 (무조건 100% 넓히기) */
         div[data-testid="stRadio"] {{
             width: 100% !important;
+            display: block !important;
         }}
         
-        /* 3. 라디오 버튼들을 1번부터 7번까지 양끝으로 쫙 당겨서 균등하게 배치합니다 */
+        /* 3. 라디오 그룹도 100% 꽉 채우기 */
         div[role="radiogroup"] {{
-            display: flex !important;
             width: 100% !important;
-            justify-content: space-between !important; /* 핵심: 양 끝을 텍스트 쪽에 착 붙이고 사이를 벌림 */
+            display: flex !important;
+            flex-wrap: nowrap !important;
         }}
         
-        /* 4. 스트림릿이 임의로 넣는 우측 찌꺼기 여백을 제거해서 정확한 중앙 정렬을 돕습니다 */
+        /* 4. 가장 핵심: 7개의 버튼이 무조건 똑같은 크기로(1/n) 공간을 나눠 가짐 */
         div[role="radiogroup"] > label {{
-            margin-right: 0 !important; 
+            flex: 1 1 0% !important; 
+            justify-content: center !important; /* 나눠 가진 구역 안에서 동그라미를 한가운데로! */
+            margin: 0 !important;
+            padding: 0 !important;
         }}
         </style>
         
