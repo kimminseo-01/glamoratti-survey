@@ -37,8 +37,8 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
-def scroll_to_top_script():
+# --- 🌟 자동 스크롤 최종 안정화 버전 (이름 수정됨) ---
+def auto_scroll_top_script():
     return """
     <script>
     function scrollParent() {
@@ -136,6 +136,7 @@ elif st.session_state.page == 'demographics':
     spending = st.radio("귀하의 월 평균 의류 지출액은 어느 정도입니까? *", ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
     if st.button("다음 단계로"):
+        # 필수 응답 체크 (job 변수는 입력창이 없으므로 체크 리스트에서 제거)
         if not (gender and age and edu and major and spending):
             st.error("모든 문항에 응답해 주세요.")
         else:
@@ -173,7 +174,7 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
+    # 🌟 수동 맨 위로 버튼 (안정화 버전)
     components.html("""
     <script>
     function goToTop() {
@@ -260,7 +261,7 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
+    # 🌟 수동 맨 위로 버튼 (안정화 버전)
     components.html("""
     <script>
     function goToTop() {
