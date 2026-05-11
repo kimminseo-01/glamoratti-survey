@@ -204,25 +204,47 @@ elif st.session_state.page == 'main_survey':
 
     st.write("---")
     
-    st.markdown(
+    components.html(
         """
-        <a href="#top-of-page" target="_self" style="
+        <style>
+        .up-btn {
             display: block;
-            width: 100%;
+            width: 95%;
+            margin: 0 auto;
             padding: 10px;
             background-color: #F0F2F6;
             color: #31333F;
             text-align: center;
-            text-decoration: none;
             border-radius: 8px;
             font-weight: bold;
             border: 1px solid #DAE1E7;
-            margin-bottom: 20px; 
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .up-btn:hover {
+            background-color: #E0E2E6;
+        }
+        </style>
+        
+        <button class="up-btn" onclick="
+            var targets = [
+                window.parent.document.querySelector('section.main'),
+                window.parent.document.querySelector('.stApp'),
+                window.parent.document.querySelector('.main'),
+                window.parent,
+                window.parent.document.body
+            ];
+            targets.forEach(function(t) {
+                if (t) {
+                    t.scrollTop = 0;
+                    if (t.scrollTo) t.scrollTo({top: 0, behavior: 'instant'});
+                }
+            });
         ">
-        ⬆️ 화면 맨 위로 올라가기
-        </a>
+        ⬆️ 화면 맨 위로 단숨에 올라가기
+        </button>
         """,
-        unsafe_allow_html=True
+        height=60 # 버튼이 들어갈 충분한 높이
     )
 
     # 이동 버튼 로직
