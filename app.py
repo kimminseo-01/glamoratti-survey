@@ -131,184 +131,285 @@ elif st.session_state.page == 'main_survey':
         ("복잡하다", "간결하다"), ("밋밋하다", "화사하다")
     ]
 
-    # --- (1) 감성 인지 평가 ---
-    st.subheader("1. 감성 인지 평가")
-    
-    # 1-1. 좌측 이미지 평가
-    st.markdown('<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>', unsafe_allow_html=True)
-    for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2, 8, 2])
+   # --- (1) 감성 인지 평가 ---
+st.subheader("1. 감성 인지 평가")
 
-        with cols[0]:
-            st.markdown(
-                f"<div style='text-align:right; padding-top:10px;'>{l}</div>",
-                unsafe_allow_html=True
-            )
+# radio 버튼 스타일 조정 CSS
+st.markdown("""
+<style>
 
-        with cols[1]:
-            key_name = f"{current_img_file}_L_emo{i+1}"
+/* 라디오 그룹 가로 정렬 */
+div[role="radiogroup"] {
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-direction: row !important;
+    gap: 0.3rem;
+}
 
-            st.markdown("""
-            <style>
-            div[role="radiogroup"] {
-                display: flex !important;
-                justify-content: space-between !important;
-                flex-direction: row !important;
-            }
+/* 각 숫자 간격 조절 */
+div[role="radiogroup"] label {
+    margin: 0 !important;
+}
 
-            div[role="radiogroup"] label {
-                margin: 0 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+/* 숫자와 버튼 수직 정렬 */
+div[role="radiogroup"] > label > div {
+    display: flex;
+    align-items: center;
+}
 
-            step_responses[key_name] = st.radio(
-                f"slider_{current_img_file}_L_emo{i}",
-                options=[1,2,3,4,5,6,7],
-                horizontal=True,
-                index=3,
-                label_visibility="collapsed"
-            )
+/* 위아래 여백 감소 */
+div[data-testid="stRadio"] {
+    margin-top: -10px;
+    margin-bottom: -10px;
+}
 
-        with cols[2]:
-            st.markdown(
-                f"<div style='text-align:left; padding-top:10px;'>{r}</div>",
-                unsafe_allow_html=True
-            )
-    st.write("---")
+</style>
+""", unsafe_allow_html=True)
 
-    # 1-2. 우측 이미지 평가
-    st.markdown("<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>", unsafe_allow_html=True)
-    for i, (l, r) in enumerate(adj_pairs):
-       cols = st.columns([2, 8, 2])
+adj_pairs = [
+    ("촌스럽다", "세련되다"),
+    ("소박하다", "고급스럽다"),
+    ("수수하다", "화려하다"),
+    ("순수하다", "섹시하다"),
+    ("투박하다", "우아하다"),
+    ("단조롭다", "드라마틱하다"),
+    ("온화하다", "강렬하다"),
+    ("여리다", "단단하다"),
+    ("부드럽다", "날카롭다"),
+    ("복잡하다", "간결하다"),
+    ("밋밋하다", "화사하다")
+]
 
-        with cols[0]:
-            st.markdown(
-                f"<div style='text-align:right; padding-top:10px;'>{l}</div>",
-                unsafe_allow_html=True
-            )
+# -----------------------------
+# 1-1. 좌측 이미지 평가
+# -----------------------------
+st.markdown(
+    '<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>',
+    unsafe_allow_html=True
+)
 
-        with cols[1]:
-            key_name = f"{current_img_file}_L_emo{i+1}"
+for i, (l, r) in enumerate(adj_pairs):
 
-            st.markdown("""
-            <style>
-            div[role="radiogroup"] {
-                display: flex !important;
-                justify-content: space-between !important;
-                flex-direction: row !important;
-            }
+    cols = st.columns([2, 8, 2])
 
-            div[role="radiogroup"] label {
-                margin: 0 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    # 왼쪽 형용사
+    with cols[0]:
+        st.markdown(
+            f"""
+            <div style="
+                text-align:right;
+                padding-top:8px;
+                font-size:16px;
+            ">
+            {l}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-            step_responses[key_name] = st.radio(
-                f"slider_{current_img_file}_L_emo{i}",
-                options=[1,2,3,4,5,6,7],
-                horizontal=True,
-                index=3,
-                label_visibility="collapsed"
-            )
+    # 가운데 7점 척도
+    with cols[1]:
+        key_name = f"{current_img_file}_Left_emo{i+1}"
 
-        with cols[2]:
-            st.markdown(
-                f"<div style='text-align:left; padding-top:10px;'>{r}</div>",
-                unsafe_allow_html=True
-            )
-    st.write("---")
+        step_responses[key_name] = st.radio(
+            f"slider_{current_img_file}_L_emo{i}",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            index=3,
+            label_visibility="collapsed"
+        )
+
+    # 오른쪽 형용사
+    with cols[2]:
+        st.markdown(
+            f"""
+            <div style="
+                text-align:left;
+                padding-top:8px;
+                font-size:16px;
+            ">
+            {r}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+st.write("---")
+
+# -----------------------------
+# 1-2. 우측 이미지 평가
+# -----------------------------
+st.markdown(
+    "<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>",
+    unsafe_allow_html=True
+)
+
+for i, (l, r) in enumerate(adj_pairs):
+
+    cols = st.columns([2, 8, 2])
+
+    # 왼쪽 형용사
+    with cols[0]:
+        st.markdown(
+            f"""
+            <div style="
+                text-align:right;
+                padding-top:8px;
+                font-size:16px;
+            ">
+            {l}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # 가운데 7점 척도
+    with cols[1]:
+        key_name = f"{current_img_file}_Right_emo{i+1}"
+
+        step_responses[key_name] = st.radio(
+            f"slider_{current_img_file}_R_emo{i}",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            index=3,
+            label_visibility="collapsed"
+        )
+
+    # 오른쪽 형용사
+    with cols[2]:
+        st.markdown(
+            f"""
+            <div style="
+                text-align:left;
+                padding-top:8px;
+                font-size:16px;
+            ">
+            {r}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+st.write("---")
 
     # --- (2) 수용 의도 평가 ---
-    st.subheader("2. 수용 의도 평가")
-    acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
-    for i, item in enumerate(acc_items):
-        st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-        cols = st.columns([2, 8, 2])
+st.subheader("2. 수용 의도 평가")
 
-        with cols[0]:
-            st.markdown(
-                f"<div style='text-align:right; padding-top:10px;'>{l}</div>",
-                unsafe_allow_html=True
-            )
+acc_items = [
+    "수용할 가능성",
+    "구매할 의향",
+    "추천할 의향"
+]
 
-        with cols[1]:
-            key_name = f"{current_img_file}_L_emo{i+1}"
+for i, item in enumerate(acc_items):
 
-            st.markdown("""
-            <style>
-            div[role="radiogroup"] {
-                display: flex !important;
-                justify-content: space-between !important;
-                flex-direction: row !important;
-            }
+    st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
 
-            div[role="radiogroup"] label {
-                margin: 0 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    cols = st.columns([2, 8, 2])
 
-            step_responses[key_name] = st.radio(
-                f"slider_{current_img_file}_L_emo{i}",
-                options=[1,2,3,4,5,6,7],
-                horizontal=True,
-                index=3,
-                label_visibility="collapsed"
-            )
+    # 왼쪽 라벨
+    with cols[0]:
+        st.markdown(
+            """
+            <div style="
+                text-align:right;
+                padding-top:8px;
+                font-size:15px;
+            ">
+            전혀 아니다
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        with cols[2]:
-            st.markdown(
-                f"<div style='text-align:left; padding-top:10px;'>{r}</div>",
-                unsafe_allow_html=True
-            )
-    st.write("---")
+    # 가운데 7점 척도
+    with cols[1]:
+        key_name = f"{current_img_file}_acc{i+1}"
+
+        step_responses[key_name] = st.radio(
+            f"slider_{current_img_file}_acc{i}",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            index=3,
+            label_visibility="collapsed"
+        )
+
+    # 오른쪽 라벨
+    with cols[2]:
+        st.markdown(
+            """
+            <div style="
+                text-align:left;
+                padding-top:8px;
+                font-size:15px;
+            ">
+            매우 그렇다
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+st.write("---")
 
     # --- (3) 재해석 정도 평가 ---
-    st.subheader("3. 재해석 정도 평가")
-    re_items = ["실루엣", "색상", "소재", "디테일"]
-    for i, item in enumerate(re_items):
-        st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-       cols = st.columns([2, 8, 2])
+st.subheader("3. 재해석 정도 평가")
 
-        with cols[0]:
-            st.markdown(
-                f"<div style='text-align:right; padding-top:10px;'>{l}</div>",
-                unsafe_allow_html=True
-            )
+re_items = [
+    "실루엣",
+    "색상",
+    "소재",
+    "디테일"
+]
 
-        with cols[1]:
-            key_name = f"{current_img_file}_L_emo{i+1}"
+for i, item in enumerate(re_items):
 
-            st.markdown("""
-            <style>
-            div[role="radiogroup"] {
-                display: flex !important;
-                justify-content: space-between !important;
-                flex-direction: row !important;
-            }
+    st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
 
-            div[role="radiogroup"] label {
-                margin: 0 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    cols = st.columns([2, 8, 2])
 
-            step_responses[key_name] = st.radio(
-                f"slider_{current_img_file}_L_emo{i}",
-                options=[1,2,3,4,5,6,7],
-                horizontal=True,
-                index=3,
-                label_visibility="collapsed"
-            )
+    # 왼쪽 라벨
+    with cols[0]:
+        st.markdown(
+            """
+            <div style="
+                text-align:right;
+                padding-top:8px;
+                font-size:15px;
+            ">
+            전혀 아니다
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        with cols[2]:
-            st.markdown(
-                f"<div style='text-align:left; padding-top:10px;'>{r}</div>",
-                unsafe_allow_html=True
-            )
-    st.write("---")    
+    # 가운데 7점 척도
+    with cols[1]:
+        key_name = f"{current_img_file}_re{i+1}"
+
+        step_responses[key_name] = st.radio(
+            f"slider_{current_img_file}_re{i}",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            index=3,
+            label_visibility="collapsed"
+        )
+
+    # 오른쪽 라벨
+    with cols[2]:
+        st.markdown(
+            """
+            <div style="
+                text-align:left;
+                padding-top:8px;
+                font-size:15px;
+            ">
+            매우 그렇다
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+st.write("---")   
  
     components.html(
         """
