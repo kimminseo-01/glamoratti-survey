@@ -37,13 +37,44 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 자동 스크롤 자바스크립트 (페이지 이동 시) ---
-def auto_scroll_top_script():
+# --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
+def scroll_to_top_script():
     return """
     <script>
-    window.parent.window.scrollTo(0,0);
-    var mainContent = window.parent.document.querySelector('.main');
-    if (mainContent) { mainContent.scrollTo(0,0); }
+    function scrollParent() {
+        // 전체 브라우저 스크롤
+        window.parent.scrollTo(0, 0);
+
+        // Streamlit 내부 컨테이너들
+        const selectors = [
+            '.main',
+            '[data-testid="stAppViewContainer"]',
+            '[data-testid="stMain"]',
+            'section.main'
+        ];
+
+        selectors.forEach(selector => {
+            const el = window.parent.document.querySelector(selector);
+            if (el) {
+                el.scrollTop = 0;
+                if (el.scrollTo) {
+                    el.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
+                }
+            }
+        });
+
+        // html/body 강제 초기화
+        window.parent.document.documentElement.scrollTop = 0;
+        window.parent.document.body.scrollTop = 0;
+    }
+
+    // 여러 번 실행해서 Streamlit 렌더링 타이밍 대응
+    setTimeout(scrollParent, 50);
+    setTimeout(scrollParent, 150);
+    setTimeout(scrollParent, 300);
     </script>
     """
 
