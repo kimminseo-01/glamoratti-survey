@@ -37,30 +37,21 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 가장 강력한 스크롤 자바스크립트 ---
-def scroll_to_top_script():
-    # 부모 창의 윈도우와 메인 컨테이너를 모두 0으로 강제 이동시킵니다.
+# --- 자동 스크롤 자바스크립트 (페이지 이동 시) ---
+def auto_scroll_top_script():
     return """
     <script>
-    function forceScroll() {
-        window.parent.window.scrollTo(0,0);
-        var mainContent = window.parent.document.querySelector('.main');
-        if (mainContent) {
-            mainContent.scrollTo(0,0);
-        }
-    }
-    // 페이지 로드 시 즉시 실행
-    setTimeout(forceScroll, 10); 
+    window.parent.window.scrollTo(0,0);
+    var mainContent = window.parent.document.querySelector('.main');
+    if (mainContent) { mainContent.scrollTo(0,0); }
     </script>
     """
 
-# --- 공통 CSS (이미지 크기 및 본문 여백 최적화) ---
+# --- 공통 CSS ---
 def apply_common_css():
     st.markdown("""
         <style>
         header {visibility: hidden;}
-        
-        /* 상단 고정 영역 */
         .sticky-image { 
             position: fixed; 
             top: 0; 
@@ -72,18 +63,13 @@ def apply_common_css():
             border-bottom: 2px solid #ddd; 
             text-align: center; 
         }
-        
-        /* 이미지 높이를 180px로 제한하여 문항 가독성 확보 */
         .sticky-image img {
             max-height: 180px; 
             width: auto;
             max-width: 90%;
             object-fit: contain;
         }
-        
-        /* 이미지 영역에 가려지지 않도록 본문 시작 위치 조정 */
         .spacer { margin-top: 270px; }
-        
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
@@ -103,9 +89,7 @@ if st.session_state.page == 'intro':
     - 모든 응답은 익명으로 처리되며 연구 목적으로만 사용됩니다.
     - 설문조사 참여에 동의한다면 설문 시작하기 버튼을 눌러 설문을 시작해주십시오.
     """)
-
     st.warning("⚠️ 중간에 브라우저를 새로고침하면 응답이 초기화되니 주의해 주세요.")
-    
     if st.button("설문 시작하기"):
         st.session_state.page = 'demographics'
         st.rerun()
@@ -132,9 +116,7 @@ elif st.session_state.page == 'demographics':
 elif st.session_state.page == 'part1_survey':
     idx = st.session_state.p1_idx
     apply_common_css()
-    
-    # 이미지 로드 시 최상단으로 이동
-    components.html(scroll_to_top_script(), height=0)
+    components.html(auto_scroll_top_script(), height=0)
     
     total_p1 = len(st.session_state.p1_order)
     current_img_file = st.session_state.p1_order[idx]
@@ -160,17 +142,29 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼 (HTML 방식으로 수정)
-    components.html(f"""
-        <script>
-        function goToTop() {{
-            window.parent.window.scrollTo(0,0);
-            var m = window.parent.document.querySelector('.main');
-            if(m) m.scrollTo(0,0);
-        }}
-        </script>
-        <button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>
-    """, height=60)
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
+    components.html("""
+    <script>
+    function goToTop() {
+        window.parent.scrollTo({ top: 0, behavior: 'smooth' });
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
+        selectors.forEach(selector => {
+            const el = window.parent.document.querySelector(selector);
+            if (el) {
+                el.scrollTo({ top: 0, behavior: 'smooth' });
+                el.scrollTop = 0;
+            }
+        });
+        window.parent.document.documentElement.scrollTop = 0;
+        window.parent.document.body.scrollTop = 0;
+    }
+    </script>
+    <div style="margin-top:20px;">
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+            ⬆️ 화면 맨 위로
+        </button>
+    </div>
+    """, height=80)
     
     if st.button("다음 이미지로 ->", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
@@ -192,7 +186,7 @@ elif st.session_state.page == 'part2_intro':
 elif st.session_state.page == 'part2_survey':
     idx = st.session_state.p2_idx
     apply_common_css()
-    components.html(scroll_to_top_script(), height=0)
+    components.html(auto_scroll_top_script(), height=0)
     
     total_p2 = len(st.session_state.p2_order)
     current_img_file = st.session_state.p2_order[idx]
@@ -203,7 +197,6 @@ elif st.session_state.page == 'part2_survey':
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
-    
     st.subheader("2. 수용 의도 평가")
     acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
     for i, item in enumerate(acc_items):
@@ -236,17 +229,29 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼
-    components.html(f"""
-        <script>
-        function goToTop() {{
-            window.parent.window.scrollTo(0,0);
-            var m = window.parent.document.querySelector('.main');
-            if(m) m.scrollTo(0,0);
-        }}
-        </script>
-        <button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>
-    """, height=60)
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
+    components.html("""
+    <script>
+    function goToTop() {
+        window.parent.scrollTo({ top: 0, behavior: 'smooth' });
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
+        selectors.forEach(selector => {
+            const el = window.parent.document.querySelector(selector);
+            if (el) {
+                el.scrollTo({ top: 0, behavior: 'smooth' });
+                el.scrollTop = 0;
+            }
+        });
+        window.parent.document.documentElement.scrollTop = 0;
+        window.parent.document.body.scrollTop = 0;
+    }
+    </script>
+    <div style="margin-top:20px;">
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+            ⬆️ 화면 맨 위로
+        </button>
+    </div>
+    """, height=80)
     
     if idx < total_p2 - 1:
         if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
@@ -263,8 +268,7 @@ elif st.session_state.page == 'part2_survey':
             real_sheet_name = sh.get_worksheet(0).title
             try: existing_data = conn.read(worksheet=real_sheet_name, ttl=0)
             except Exception: existing_data = pd.DataFrame()
-            new_data = pd.DataFrame([final_data])
-            updated_df = pd.concat([existing_data, new_data], ignore_index=True) if not existing_data.empty else new_data
+            updated_df = pd.concat([existing_data, pd.DataFrame([final_data])], ignore_index=True)
             conn.update(worksheet=real_sheet_name, data=updated_df)
             st.success("성공적으로 제출되었습니다!")
             st.balloons()
