@@ -112,34 +112,46 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* radio 그룹 전체 폭 강제 */
+        /* radio 전체 컨테이너 폭 강제 */
+        div[data-testid="stRadio"] {{
+            width: 100% !important;
+        }}
+
+        /* 내부 wrapper 폭 강제 */
+        div[data-testid="stRadio"] > div {{
+            width: 100% !important;
+        }}
+
+        /* radio group */
         div[role="radiogroup"] {{
+            width: 100% !important;
             display: flex !important;
             flex-direction: row !important;
             justify-content: space-between !important;
-            width: 100% !important;
+            align-items: center !important;
             gap: 0 !important;
         }}
 
-        /* 각 선택지 동일 폭 */
-        div[role="radiogroup"] > label {{
-            flex: 1 1 0 !important;
+        /* 각 선택지 균등 분배 */
+        div[role="radiogroup"] label {{
+            flex: 1 !important;
             display: flex !important;
             justify-content: center !important;
+            align-items: center !important;
             margin: 0 !important;
         }}
 
-        /* 숫자와 원 정렬 */
-        div[role="radiogroup"] > label > div {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* 원 + 숫자 정렬 */
+        div[role="radiogroup"] label > div {{
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }}
 
-        /* 위아래 여백 감소 */
+        /* 위아래 간격 */
         div[data-testid="stRadio"] {{
-            margin-top: -10px;
-            margin-bottom: -10px;
+            margin-top: -8px !important;
+            margin-bottom: -8px !important;
         }}
         </style>
         
@@ -166,7 +178,7 @@ elif st.session_state.page == 'main_survey':
     # 1-1. 좌측 이미지 평가
     st.markdown('<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>', unsafe_allow_html=True)
     for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2, 8, 2])
+        cols = st.columns([2.5, 10, 2.5])
         with cols[0]:
             st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
         with cols[1]: 
@@ -180,7 +192,7 @@ elif st.session_state.page == 'main_survey':
     # 1-2. 우측 이미지 평가
     st.markdown("<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>", unsafe_allow_html=True)
     for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2, 8, 2])
+        cols = st.columns([2.5, 10, 2.5])
         with cols[0]:
             st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
         with cols[1]: 
@@ -196,7 +208,7 @@ elif st.session_state.page == 'main_survey':
     acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
     for i, item in enumerate(acc_items):
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-        cols = st.columns([2, 8, 2])
+        cols = st.columns([2.5, 10, 2.5])
         with cols[0]:
             st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
         with cols[1]: 
@@ -212,7 +224,7 @@ elif st.session_state.page == 'main_survey':
     re_items = ["실루엣", "색상", "소재", "디테일"]
     for i, item in enumerate(re_items):
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-        cols = st.columns([2, 8, 2])
+        cols = st.columns([2.5, 10, 2.5])
         with cols[0]:
             st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
         with cols[1]: 
