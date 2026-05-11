@@ -183,7 +183,7 @@ elif st.session_state.page == 'main_survey':
             conn = st.connection("gsheets", type=GSheetsConnection)
     
     # 기존 데이터를 불러오고 새 응답 추가
-            existing_data = conn.read(worksheet="Sheet1") # 시트 이름 확인
+            existing_data = conn.read(worksheet="survey") # 시트 이름 확인
             new_data = pd.DataFrame([final_data])
             updated_df = pd.concat([existing_data, new_data], ignore_index=True)
     
