@@ -105,6 +105,7 @@ elif st.session_state.page == 'main_survey':
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
     # 기존 CSS에 구글 폼 스타일(라디오 버튼 세로 정렬)을 추가한 버전입니다.
+    # 🌟 [진짜 최종 해결책] 스트림릿 BaseWeb 컴포넌트 직접 타격 CSS
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -112,43 +113,35 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 🌟 [최종 해결책] 스트림릿 고유 속성을 직접 타격하여 구글 폼 스타일 강제 적용 */
-        
-        /* 1. 라디오 버튼의 가장 바깥쪽 컨테이너부터 100%로 늘려버립니다 */
-        [data-testid="stRadio"] {{
+        /* 1. 라디오 버튼 그룹의 바깥 껍데기를 화면 폭(100%)에 꽉 차게 늘립니다. */
+        div[data-testid="stRadio"] {{
             width: 100% !important;
         }}
-        
-        /* 2. 동그라미들이 들어있는 실제 그룹을 화면 끝까지 펼칩니다 */
-        [data-testid="stRadio"] > div[role="radiogroup"] {{
-            display: flex !important;
-            flex-direction: row !important;
+        div[role="radiogroup"] {{
             width: 100% !important;
+            display: flex !important;
             justify-content: space-between !important;
-            gap: 0 !important; /* 스트림릿의 기본 여백 무시 */
         }}
         
-        /* 3. 각 선택지(1~7)를 정확히 1/N로 강제 할당합니다 (가장 중요!) */
-        [data-testid="stRadio"] > div[role="radiogroup"] > label {{
-            flex: 1 1 0px !important; /* 남는 공간 없이 무조건 똑같이 나눠 가짐 */
-            min-width: 0 !important; 
+        /* 2. 스트림릿의 진짜 라디오 버튼(BaseWeb)을 1/7 비율로 강제로 쪼개고 위아래를 뒤집습니다. */
+        label[data-baseweb="radio"] {{
+            flex: 1 1 0% !important; /* 남는 공간 없이 1:1:1:1:1:1:1 비율로 나눔 */
             display: flex !important;
-            flex-direction: column-reverse !important; 
+            flex-direction: column-reverse !important; /* 숫자는 위로, 동그라미는 아래로 */
             align-items: center !important;
             justify-content: center !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            margin: 0 !important; /* 스트림릿의 옹기종기 모이는 기본 여백 파괴 */
         }}
         
-        /* 4. 동그라미 아이콘이 들어간 부분의 쓸데없는 왼쪽 여백 제거 */
-        [data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {{
-            margin: 0 !important;
+        /* 3. 동그라미 우측에 숨어있던 쓸데없는 여백 파괴 */
+        label[data-baseweb="radio"] > div:first-child {{
+            margin-right: 0px !important;
         }}
         
-        /* 5. 숫자(1, 2, 3...) 부분의 위치와 여백 조정 */
-        [data-testid="stRadio"] > div[role="radiogroup"] > label > div:last-child {{
-            margin-left: 0 !important;
-            margin-bottom: 8px !important; /* 동그라미와의 간격 띄우기 */
+        /* 4. 숫자 좌측 여백 파괴 & 동그라미 위로 살짝 띄우기 */
+        label[data-baseweb="radio"] > div:last-child {{
+            margin-left: 0px !important;
+            margin-bottom: 8px !important;
         }}
         </style>
         
