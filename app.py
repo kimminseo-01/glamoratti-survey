@@ -139,12 +139,6 @@ elif st.session_state.page == 'main_survey':
         """, unsafe_allow_html=True)
 
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
-
-    # 문항이 시작되기 직전, 응답자가 이미지를 놓쳤을 때 바로 누를 수 있는 위치입니다.
-    if st.button("⬆️ 화면 맨 위로 (이미지가 안 보인다면 클릭!)"):
-        st.rerun() 
-
-    st.write("---") # 시각적인 구분선
     
     # 이후 문항 코드들은 들여쓰기 없이(원래대로) 쭉 작성하시면 됩니다.
     step_responses = {}
@@ -209,6 +203,10 @@ elif st.session_state.page == 'main_survey':
         with cols[2]: st.write("매우 그렇다")
 
     st.write("---")
+    
+    # 하단에도 하나 더 배치 (선택 사항)
+    if st.button("⬆️ 화면 맨 위로", key="scroll_bottom"):
+        st.rerun()
 
     # 이동 버튼 로직
     if idx < total_sets - 1:
