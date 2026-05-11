@@ -37,31 +37,30 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 강력해진 스크롤 자바스크립트 함수 ---
+# --- 🌟 [수정됨] 가장 강력한 스크롤 자바스크립트 ---
 def scroll_to_top_script():
+    # 부모 창의 윈도우와 메인 컨테이너를 모두 0으로 강제 이동시킵니다.
     return """
     <script>
-    function forceScrollTop() {
-        const target = window.parent.document.querySelector('.main') || 
-                       window.parent.document.querySelector('[data-testid="stAppViewContainer"]') ||
-                       window.parent;
-        
-        if (target) {
-            target.scrollTo({top: 0, behavior: 'instant'});
+    function forceScroll() {
+        window.parent.window.scrollTo(0,0);
+        var mainContent = window.parent.document.querySelector('.main');
+        if (mainContent) {
+            mainContent.scrollTo(0,0);
         }
-        window.parent.scrollTo({top: 0, behavior: 'instant'});
     }
-    forceScrollTop();
+    // 페이지 로드 시 즉시 실행
+    setTimeout(forceScroll, 10); 
     </script>
     """
 
-# --- 공통 CSS (이미지 크기 및 여백 수정) ---
+# --- 공통 CSS (이미지 크기 및 본문 여백 최적화) ---
 def apply_common_css():
     st.markdown("""
         <style>
         header {visibility: hidden;}
         
-        /* 상단 고정 영역 높이 제한 */
+        /* 상단 고정 영역 */
         .sticky-image { 
             position: fixed; 
             top: 0; 
@@ -69,21 +68,21 @@ def apply_common_css():
             width: 100%; 
             background-color: white; 
             z-index: 1000; 
-            padding: 5px 0; 
+            padding: 8px 0; 
             border-bottom: 2px solid #ddd; 
             text-align: center; 
         }
         
-        /* 이미지 크기가 너무 커지지 않도록 제한 */
+        /* 이미지 높이를 180px로 제한하여 문항 가독성 확보 */
         .sticky-image img {
-            max-height: 200px; /* 이미지 높이를 200px로 제한 */
+            max-height: 180px; 
             width: auto;
             max-width: 90%;
             object-fit: contain;
         }
         
-        /* 이미지 영역 축소에 따른 본문 시작 위치 조정 */
-        .spacer { margin-top: 290px; }
+        /* 이미지 영역에 가려지지 않도록 본문 시작 위치 조정 */
+        .spacer { margin-top: 270px; }
         
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
@@ -134,7 +133,7 @@ elif st.session_state.page == 'part1_survey':
     idx = st.session_state.p1_idx
     apply_common_css()
     
-    # 자동 스크롤 실행
+    # 이미지 로드 시 최상단으로 이동
     components.html(scroll_to_top_script(), height=0)
     
     total_p1 = len(st.session_state.p1_order)
@@ -161,8 +160,17 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
-    # 수동 맨 위로 버튼 (스크립트 재호출)
-    components.html(f"""<script>function forceScrollTop(){{const t=window.parent.document.querySelector('.main')||window.parent.document.querySelector('[data-testid="stAppViewContainer"]')||window.parent;if(t){{t.scrollTo({{top: 0, behavior: 'instant'}});}}window.parent.scrollTo({{top: 0, behavior: 'instant'}});}}</script><button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>""", height=60)
+    # 🌟 수동 맨 위로 버튼 (HTML 방식으로 수정)
+    components.html(f"""
+        <script>
+        function goToTop() {{
+            window.parent.window.scrollTo(0,0);
+            var m = window.parent.document.querySelector('.main');
+            if(m) m.scrollTo(0,0);
+        }}
+        </script>
+        <button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>
+    """, height=60)
     
     if st.button("다음 이미지로 ->", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
@@ -228,7 +236,17 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    components.html(f"""<script>function forceScrollTop(){{const t=window.parent.document.querySelector('.main')||window.parent.document.querySelector('[data-testid="stAppViewContainer"]')||window.parent;if(t){{t.scrollTo({{top: 0, behavior: 'instant'}});}}window.parent.scrollTo({{top: 0, behavior: 'instant'}});}}</script><button onclick='forceScrollTop()' style='display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;'>⬆️ 화면 맨 위로</button>""", height=60)
+    # 🌟 수동 맨 위로 버튼
+    components.html(f"""
+        <script>
+        function goToTop() {{
+            window.parent.window.scrollTo(0,0);
+            var m = window.parent.document.querySelector('.main');
+            if(m) m.scrollTo(0,0);
+        }}
+        </script>
+        <button onclick="goToTop()" style="display:block;width:100%;padding:12px;background-color:#F0F2F6;border-radius:8px;font-weight:bold;border:1px solid #DAE1E7;cursor:pointer;">⬆️ 화면 맨 위로</button>
+    """, height=60)
     
     if idx < total_p2 - 1:
         if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
