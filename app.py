@@ -175,20 +175,36 @@ elif st.session_state.page == 'main_survey':
             st.session_state.current_idx += 1
             st.rerun()
     else:
-        if st.button("모든 설문 완료 및 결과 제출"):
+        if st.button("모든 설문 완료 및 제출"):
             st.session_state.all_responses.update(step_responses)
             final_data = {**st.session_state.user_data, **st.session_state.all_responses}
     
-    # 🌟 구글 시트 연동 및 저장 로직
             conn = st.connection("gsheets", type=GSheetsConnection)
     
-    # 기존 데이터를 불러오고 새 응답 추가
-            existing_data = conn.read(worksheet="Sheet1") # 시트 이름 확인
+    # 1. 실제 탭 이름 가져오기 (이전과 동일)
+            spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+            sh = conn.client._client.open_by_url(spreadsheet_url)
+            real_sheet_name = sh.get_worksheet(0).title
+
+    # 2. [핵심 수정] ttl=0 을 추가하여 항상 "최신" 데이터를 읽어옵니다.
+            try:
+        # ttl=0은 캐시 수명을 0초로 설정하여 무조건 새로 읽어오게 합니다.
+                existing_data = conn.read(worksheet=real_sheet_name, ttl=0)
+            except Exception:
+                existing_data = pd.DataFrame()
+
+    # 3. 데이터 합치기
             new_data = pd.DataFrame([final_data])
-            updated_df = pd.concat([existing_data, new_data], ignore_index=True)
     
-    # 시트에 덮어쓰기 (또는 추가하기)
-            conn.update(worksheet="Sheet1", data=updated_df)
+    # 기존 데이터가 비어있지 않다면 아래에 행을 추가합니다.
+            if not existing_data.empty:
+        # concat 시 ignore_index=True를 주면 인덱스가 꼬이지 않고 아래로 쌓입니다.
+                updated_df = pd.concat([existing_data, new_data], ignore_index=True)
+            else:
+                updated_df = new_data
     
-            st.success("데이터가 구글 스프레드시트에 안전하게 저장되었습니다!")
+    # 4. 시트에 전체 데이터 덮어쓰기 (기존 내용 + 새 내용)
+            conn.update(worksheet=real_sheet_name, data=updated_df)
+    
+            st.success("데이터가 성공적으로 저장되었습니다! 응답해주셔서 감사합니다!")
             st.balloons()
