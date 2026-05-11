@@ -104,7 +104,6 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
-    # 🌟 [수정된 CSS] 부작용 없이 깔끔하게 구글 폼 스타일만 적용
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -112,36 +111,42 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 1. 라디오 버튼 컨테이너를 가로(row)로 강제 정렬하고 100% 꽉 채웁니다. */
-        div[role="radiogroup"] {{
-            display: flex !important;
-            flex-direction: row !important; /* 세로로 찌그러지는 현상 방지 */
-            justify-content: space-between !important;
+        /* 1. 라디오 버튼 그룹의 바깥 껍데기를 화면에 100% 꽉 채웁니다 */
+        div[data-testid="stRadio"] {{
             width: 100% !important;
         }}
         
-        /* 2. 각 버튼(숫자+동그라미)을 7등분하여 넓게 퍼뜨리고, 숫자를 위로 올립니다. */
+        /* 2. [가장 핵심] Grid를 사용하여 무조건 7칸으로 쪼개버립니다 */
+        div[role="radiogroup"] {{
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important; /* 1:1:1:1:1:1:1 비율로 강제 분할 */
+            width: 100% !important;
+            gap: 0 !important;
+        }}
+        
+        /* 3. 각 7개의 칸 안에서 숫자(위)와 동그라미(아래)를 가운데 정렬합니다 */
         label[data-baseweb="radio"] {{
-            flex: 1 !important; /* 7개 버튼이 동일한 간격으로 벌어짐 */
             display: flex !important;
-            flex-direction: column-reverse !important; /* 숫자 위, 동그라미 아래 */
+            flex-direction: column-reverse !important;
             align-items: center !important;
             justify-content: center !important;
             margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
         }}
         
-        /* 3. 동그라미의 쓸데없는 여백 제거 */
+        /* 4. 동그라미 우측 쓸데없는 여백 제거 */
         label[data-baseweb="radio"] > div:first-child {{
             margin-right: 0 !important;
         }}
         
-        /* 4. 숫자의 여백 제거 및 동그라미와 살짝 띄우기 */
+        /* 5. 숫자 좌측 여백 제거 및 동그라미와 살짝 띄우기 */
         label[data-baseweb="radio"] > div:last-child {{
             margin-left: 0 !important;
             margin-bottom: 8px !important;
         }}
-
-        /* 5. 튀어나왔던 영문 라벨명(radio_pair...) 완벽하게 다시 숨김 */
+        
+        /* 6. 숨겨진 영문 라벨 완전 제거 */
         label[data-testid="stWidgetLabel"] {{
             display: none !important;
         }}
