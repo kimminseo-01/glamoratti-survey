@@ -94,13 +94,14 @@ elif st.session_state.page == 'main_survey':
             function forceScroll() {{
                 var mainSection = window.parent.document.querySelector('section.main');
                 if (mainSection) {{
-                    mainSection.scrollTop = 0; // 즉시 0으로
+                    mainSection.scrollTop = 0;
                 }}
             }}
-            forceScroll(); // 1차 시도
-            setTimeout(forceScroll, 300); // 2차 시도 (렌더링 후)
-            setTimeout(forceScroll, 1000); // 3차 시도 (혹시 모를 지연 대응)
+            forceScroll(); 
+            setTimeout(forceScroll, 300); 
+            setTimeout(forceScroll, 1000); 
         </script>
+        # <--- 이 주석 한 줄이 매번 스크립트를 새로 실행하게 만듭니다!
         """,
         height=0
     )
