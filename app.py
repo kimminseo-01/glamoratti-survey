@@ -5,9 +5,6 @@ import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-# --- 0. 페이지 설정 (이미지를 크게 보기 위해 반드시 'wide'로 설정해야 합니다) ---
-st.set_page_config(layout="wide")
-
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
     st.session_state.page = 'intro'
@@ -21,11 +18,13 @@ if 'p1_idx' not in st.session_state:
 if 'p2_idx' not in st.session_state:
     st.session_state.p2_idx = 0
 
+# 파트 1 (단일 이미지 S1~S24) 랜덤 리스트
 if 'p1_order' not in st.session_state:
     p1_list = [f"S{i}.png" for i in range(1, 25)] 
     random.shuffle(p1_list)
     st.session_state.p1_order = p1_list
 
+# 파트 2 (이미지 쌍 pair) 랜덤 리스트
 if 'p2_order' not in st.session_state:
     p2_list = [f"pair{i}.png" for i in range(1, 14)] 
     random.shuffle(p2_list)
@@ -38,6 +37,7 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
+# --- 🌟 자동 스크롤 최종 안정화 버전 ---
 def auto_scroll_top_script():
     return """
     <script>
@@ -48,7 +48,9 @@ def auto_scroll_top_script():
             const el = window.parent.document.querySelector(selector);
             if (el) {
                 el.scrollTop = 0;
-                if (el.scrollTo) { el.scrollTo({ top: 0, behavior: 'instant' }); }
+                if (el.scrollTo) {
+                    el.scrollTo({ top: 0, behavior: 'instant' });
+                }
             }
         });
         window.parent.document.documentElement.scrollTop = 0;
@@ -60,7 +62,7 @@ def auto_scroll_top_script():
     </script>
     """
 
-# --- 🌟 이미지 크기 조절 핵심 CSS (여기를 수정하세요) ---
+# --- 공통 CSS ---
 def apply_common_css():
     st.markdown("""
         <style>
@@ -72,29 +74,17 @@ def apply_common_css():
             width: 100%; 
             background-color: white; 
             z-index: 1000; 
-            padding: 10px 0; 
+            padding: 8px 0; 
             border-bottom: 2px solid #ddd; 
             text-align: center; 
         }
-        
         .sticky-image img {
-            /* 🌟 1. 이미지 실제 크기 키우기 */
-            /* max-height가 너무 작으면 화면 폭이 넓어져도 이미지가 커지지 않습니다. */
-            /* PC화면 기준, 600px~800px 정도로 키워보세요. */
-            max-height: 650px !important; /* 👈 이 숫자를 수정 (가장 중요) */
-            
-            width: auto !important;
-            max-width: 95% !important; /* 양옆 여백 */
+            max-height: 180px; 
+            width: auto;
+            max-width: 90%;
             object-fit: contain;
         }
-        
-        .spacer { 
-            /* 🌟 2. 본문과의 간격 조절 */
-            /* 이미지가 커진 만큼 본문(설문)을 아래로 밀어내야 겹치지 않습니다. */
-            /* 위 이미지 높이(max-height)보다 100~150px 정도 더 크게 설정하세요. */
-            margin-top: 750px; /* 👈 이 숫자를 수정 (겹침 방지) */
-        }
-        
+        .spacer { margin-top: 270px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
@@ -127,7 +117,7 @@ elif st.session_state.page == 'demographics':
     age = st.radio("귀하의 연령은 어떻게 되십니까? (만 나이 기준) *", ["만 19세 ~ 만 29 세", "만 30 세 ~ 만 39 세", "만 40 세 ~ 만 49 세", "만 50 세 ~ 만 59 세", "만 60 이상"], index=None)
     edu = st.radio("귀하의 최종 학력은 무엇입니까? *", ["고등학교 졸업", "대학교 재학", "대학교 졸업", "대학원 재학", "대학원 졸업"], index=None)
     major = st.radio("귀하의 현재 직종 혹은 전공 계열은 무엇입니까? *", ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "그 외"], index=None)
-    spending = st.radio("귀하의 월 평균 의류 지출액은 어느 정도입니까? *", ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ spending 50만 원 미만", "50만 원 이상"], index=None)
+    spending = st.radio("귀하의 월 평균 의류 지출액은 어느 정도입니까? *", ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
     if st.button("다음 단계로"):
         if not (gender and age and edu and major and spending):
@@ -148,7 +138,6 @@ elif st.session_state.page == 'part1_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    # HTML 태그 내의 width 제한을 없앴습니다 (CSS가 우선 적용됨).
     st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
@@ -169,6 +158,7 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
     components.html("""
     <script>
     function goToTop() {
@@ -233,8 +223,7 @@ elif st.session_state.page == 'part2_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    # HTML 태그 내의 width 제한을 없앴습니다 (CSS가 우선 적용됨).
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}" width="480"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
@@ -270,6 +259,7 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
+    # 🌟 수동 맨 위로 버튼
     components.html("""
     <script>
     function goToTop() {
@@ -320,7 +310,7 @@ elif st.session_state.page == 'part2_survey':
             conn = st.connection("gsheets", type=GSheetsConnection)
             spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
             sh = conn.client._client.open_by_url(spreadsheet_url)
-            real_sheet_name = Sh.get_worksheet(0).title
+            real_sheet_name = sh.get_worksheet(0).title
             try: existing_data = conn.read(worksheet=real_sheet_name, ttl=0)
             except Exception: existing_data = pd.DataFrame()
             updated_df = pd.concat([existing_data, pd.DataFrame([final_data])], ignore_index=True)
