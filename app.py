@@ -84,41 +84,36 @@ elif st.session_state.page == 'demographics':
 elif st.session_state.page == 'main_survey':
     idx = st.session_state.current_idx
     
-    # 🌟 [최후의 수단] 모든 스크롤 가능 요소를 다 찾아내서 0으로 박아버리는 스크립트
+    # 🌟 [최종 해결책] 브라우저가 스크롤을 고정할 틈을 주지 않도록 1초간 반복 실행
     components.html(
         f"""
         <script>
-            const forceScrollTop = () => {{
-                const parentDoc = window.parent.document;
-                // 1. 스트림릿의 주요 스크롤 컨테이너들을 모두 타겟팅
-                const selectors = [
-                    '.main', 
-                    'section.main', 
-                    '.stApp', 
-                    '#root',
-                    'window'
+            var count = 0;
+            var scrollInterval = setInterval(function() {{
+                // 1. 모든 가능한 스크롤 타겟을 다 찾아서 위로 올립니다.
+                var targets = [
+                    window.parent,
+                    window.parent.document.documentElement,
+                    window.parent.document.body,
+                    window.parent.document.querySelector('.main'),
+                    window.parent.document.querySelector('section.main')
                 ];
                 
-                selectors.forEach(selector => {{
-                    try {{
-                        let el = (selector === 'window') ? window.parent : parentDoc.querySelector(selector);
-                        if (el) {{
-                            if (selector === 'window') {{
-                                el.scrollTo(0, 0);
-                            }} else {{
-                                el.scrollTop = 0;
-                            }}
-                        }}
-                    }} catch (e) {{ console.log('scroll error', e); }}
+                targets.forEach(function(t) {{
+                    if (t) {{
+                        if (t.scrollTo) t.scrollTo(0, 0);
+                        if (t.scrollTop !== undefined) t.scrollTop = 0;
+                    }}
                 }});
-            }};
 
-            // 시간차를 두고 3번 실행 (이미지가 로딩되는 시점까지 커버)
-            forceScrollTop();
-            setTimeout(forceScrollTop, 300);
-            setTimeout(forceScrollTop, 800);
+                count++;
+                // 0.1초 간격으로 10번(총 1초 동안) 실행하고 멈춥니다.
+                if (count >= 10) {{
+                    clearInterval(scrollInterval);
+                }}
+            }}, 100);
         </script>
-        <div style="display:none">{idx}</div> 
+        <div style="display:none">{idx}</div>
         """,
         height=0
     )
