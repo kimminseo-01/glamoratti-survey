@@ -104,7 +104,7 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
-    # 고정 이미지 및 라디오 버튼 CSS 통합
+    # 🌟 고정 이미지 및 업데이트된 라디오 버튼 CSS 통합
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -112,22 +112,30 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
-        /* 라디오 그룹 가로 정렬 */
+        /* radio 그룹 전체 폭 강제 */
         div[role="radiogroup"] {{
             display: flex !important;
-            justify-content: space-between !important;
             flex-direction: row !important;
-            gap: 0.3rem;
+            justify-content: space-between !important;
+            width: 100% !important;
+            gap: 0 !important;
         }}
-        /* 각 숫자 간격 조절 */
-        div[role="radiogroup"] label {{
+
+        /* 각 선택지 동일 폭 */
+        div[role="radiogroup"] > label {{
+            flex: 1 1 0 !important;
+            display: flex !important;
+            justify-content: center !important;
             margin: 0 !important;
         }}
-        /* 숫자와 버튼 수직 정렬 */
+
+        /* 숫자와 원 정렬 */
         div[role="radiogroup"] > label > div {{
             display: flex;
             align-items: center;
+            justify-content: center;
         }}
+
         /* 위아래 여백 감소 */
         div[data-testid="stRadio"] {{
             margin-top: -10px;
