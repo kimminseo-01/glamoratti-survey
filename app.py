@@ -51,7 +51,7 @@ elif st.session_state.page == 'demographics':
     st.write("본격적인 시작에 앞서 기초 정보를 입력해 주세요.")
     st.write("---")
 
-    gender = st.radio("귀하의 성별은 무엇입니까? *", ["남자", "여자"], index=None)
+    gender = st.radio("본 설문조사는 한국 거주 여성을 대상으로 합니다. 귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
     age = st.radio("귀하의 연령은 어떻게 되십니까? *", ["20대", "30대", "40대", "50대", "60대 이상"], index=None)
     edu = st.radio("귀하의 최종 학력은 무엇입니까? *", 
                    ["고등학교 졸업", "대학교 재학", "대학교 졸업", "석사과정 재학", "석사과정 졸업", "박사과정 재학", "박사과정 졸업"], index=None)
@@ -104,32 +104,20 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
-    # 🌟 [원상복구] 스트림릿 기본 가로 라디오 버튼 + 라벨 숨김 처리
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
         .sticky-image {{ position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 10px 0; border-bottom: 2px solid #ddd; text-align: center; }}
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
-        
-        /* 1. 보기 싫게 튀어나왔던 영문 라벨명(radio_pair...)을 다시 숨깁니다. */
-        label[data-testid="stWidgetLabel"] {{
-            display: none !important;
-        }}
-        
-        /* 2. 스트림릿 기본 라디오 버튼들의 간격을 살짝 넓혀서 답답하지 않게 만듭니다. */
-        div[role="radiogroup"] {{
-            width: 100% !important;
-            justify-content: space-around !important; /* 양옆으로 여유롭게 퍼지도록 설정 */
-        }}
         </style>
-        
         <div class="sticky-image">
             <p style="margin:0; color: #888; font-size: 0.9em;">전체 13개 중 {idx+1}번째 평가</p>
             <img src="{img_src}" width="480"><br>
             <small style="color: #999;">파일명: {current_img_file}</small> 
         </div>
-        """, unsafe_allow_html=True)        
+        """, unsafe_allow_html=True)
+        
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     # 이후 문항 코드들은 들여쓰기 없이(원래대로) 쭉 작성하시면 됩니다.
