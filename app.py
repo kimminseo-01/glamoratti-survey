@@ -37,41 +37,25 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 자동 스크롤 최종 안정화 버전 (이름 수정됨) ---
+# --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
 def auto_scroll_top_script():
     return """
     <script>
     function scrollParent() {
-        // 전체 브라우저 스크롤
         window.parent.scrollTo(0, 0);
-
-        // Streamlit 내부 컨테이너들
-        const selectors = [
-            '.main',
-            '[data-testid="stAppViewContainer"]',
-            '[data-testid="stMain"]',
-            'section.main'
-        ];
-
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
             if (el) {
                 el.scrollTop = 0;
                 if (el.scrollTo) {
-                    el.scrollTo({
-                        top: 0,
-                        behavior: 'instant'
-                    });
+                    el.scrollTo({ top: 0, behavior: 'instant' });
                 }
             }
         });
-
-        // html/body 강제 초기화
         window.parent.document.documentElement.scrollTop = 0;
         window.parent.document.body.scrollTop = 0;
     }
-
-    // 여러 번 실행해서 Streamlit 렌더링 타이밍 대응
     setTimeout(scrollParent, 50);
     setTimeout(scrollParent, 150);
     setTimeout(scrollParent, 300);
@@ -136,7 +120,6 @@ elif st.session_state.page == 'demographics':
     spending = st.radio("귀하의 월 평균 의류 지출액은 어느 정도입니까? *", ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
     if st.button("다음 단계로"):
-        # 필수 응답 체크 (job 변수는 입력창이 없으므로 체크 리스트에서 제거)
         if not (gender and age and edu and major and spending):
             st.error("모든 문항에 응답해 주세요.")
         else:
@@ -174,7 +157,7 @@ elif st.session_state.page == 'part1_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼 (안정화 버전)
+    # 🌟 수동 맨 위로 버튼 (안정화 버전 적용)
     components.html("""
     <script>
     function goToTop() {
@@ -198,9 +181,8 @@ elif st.session_state.page == 'part1_survey':
     </div>
     """, height=80)
     
-    # 🌟 [수정됨] 파트 1 이동 버튼 로직
+    # 🌟 파트 1 이동 버튼 로직
     if st.button("다음 이미지로 ->", use_container_width=True):
-        # 먼저 강제 스크롤 스크립트 실행
         components.html("""
         <script>
         window.parent.scrollTo(0,0);
@@ -247,7 +229,7 @@ elif st.session_state.page == 'part2_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else ""
 
-    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 2] 비교 평가 ({idx+1}/{total_p2})</p><img src="{img_src}" width="480"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
     step_responses = {}
@@ -283,7 +265,7 @@ elif st.session_state.page == 'part2_survey':
         step_responses[key_name] = st.session_state[key_name]
         with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-    # 🌟 수동 맨 위로 버튼 (안정화 버전)
+    # 🌟 수동 맨 위로 버튼
     components.html("""
     <script>
     function goToTop() {
@@ -307,11 +289,9 @@ elif st.session_state.page == 'part2_survey':
     </div>
     """, height=80)
     
-    if idx < total_p2 - 1:
-        # 🌟 [수정됨] 파트 2 이동 및 제출 버튼 로직
+    # 🌟 파트 2 이동 및 제출 버튼 로직 (중복 및 들여쓰기 수정됨)
     if idx < total_p2 - 1:
         if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
-            # 먼저 강제 스크롤 스크립트 실행
             components.html("""
             <script>
             window.parent.scrollTo(0,0);
@@ -330,7 +310,6 @@ elif st.session_state.page == 'part2_survey':
 
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
-            
             import time
             time.sleep(0.15)
             st.rerun()
