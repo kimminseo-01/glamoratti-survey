@@ -52,18 +52,11 @@ elif st.session_state.page == 'demographics':
     st.write("---")
 
     gender = st.radio("본 설문조사는 한국 거주 여성을 대상으로 합니다. 귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
-    age = st.radio("귀하의 연령은 어떻게 되십니까? *", ["20대", "30대", "40대", "50대", "60대 이상"], index=None)
+    age = st.radio("귀하의 연령은 어떻게 되십니까? (만 나이 기준) *", ["만 19세 ~ 만 29 세", "만 30 세 ~ 만 39 세", "만 40 세 ~ 만 49 세", "만 50 세 ~ 만 59 세", "만 60 이상"], index=None)
     edu = st.radio("귀하의 최종 학력은 무엇입니까? *", 
-                   ["고등학교 졸업", "대학교 재학", "대학교 졸업", "석사과정 재학", "석사과정 졸업", "박사과정 재학", "박사과정 졸업"], index=None)
-    
-    major_list = ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "인문·사회 계열", "경영·경제 계열", 
-                  "이공·자연 계열", "의약·보건 계열", "교육 계열", "해당 없음", "기타"]
-    major = st.radio("귀하의 전공 계열은 무엇입니까? *", major_list, index=None)
-    major_etc = ""
-    if major == "기타":
-        major_etc = st.text_input("기타 전공을 입력해 주세요.")
+                   ["고등학교 졸업", "대학교 재학", "대학교 졸업", "대학원 재학", "대학원 졸업"], index=None)
+    major = st.radio("귀하의 현재 직종 혹은 전공 계열은 무엇입니까? *", ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "그 "], index=None)
 
-    job = st.text_input("귀하의 현재 직업은 무엇입니까? *")
     spending = st.radio("귀하의 월 평균 의류 지출액은 어느 정도입니까? *", 
                         ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", 
                          "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
@@ -74,8 +67,7 @@ elif st.session_state.page == 'demographics':
         else:
             st.session_state.user_data.update({
                 "성별": gender, "연령": age, "학력": edu, 
-                "전공": major if major != "기타" else f"기타({major_etc})",
-                "직업": job, "의류지출": spending
+                "분": major, "의류지출": spending
             })
             st.session_state.page = 'main_survey'
             st.rerun()
