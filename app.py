@@ -62,7 +62,8 @@ elif st.session_state.page == 'demographics':
                          "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
     if st.button("다음 단계로"):
-        if not (gender and age and edu and major and job and spending):
+        # 💡 [수정됨] job 변수 확인 코드를 제거했습니다.
+        if not (gender and age and edu and major and spending):
             st.error("모든 문항에 응답해 주세요.")
         else:
             st.session_state.user_data.update({
