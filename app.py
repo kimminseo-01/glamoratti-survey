@@ -1,6 +1,6 @@
 import streamlit as st
 import base64
-import random  # NEW: 랜덤 순서를 위해 필요
+import random  # 랜덤 순서를 위해 필요
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
@@ -80,7 +80,7 @@ elif st.session_state.page == 'demographics':
             st.session_state.page = 'main_survey'
             st.rerun()
 
-# --- 4. [3페이지] 메인 설문 (감성 평가 좌/우 분리 버전) ---
+# --- 4. [3페이지] 메인 설문 ---
 elif st.session_state.page == 'main_survey':
     idx = st.session_state.current_idx
     
@@ -104,6 +104,7 @@ elif st.session_state.page == 'main_survey':
     img_b64 = get_image_base64(current_img_file)
     img_src = f"data:image/png;base64,{img_b64}" if img_b64 else "https://via.placeholder.com/600x300.png?text=Image+Not+Found"
 
+    # 고정 이미지 및 라디오 버튼 CSS 통합
     st.markdown(f"""
         <style>
         header {{visibility: hidden;}}
@@ -111,6 +112,27 @@ elif st.session_state.page == 'main_survey':
         .spacer {{ margin-top: 420px; }}
         .section-header {{ background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }}
         
+        /* 라디오 그룹 가로 정렬 */
+        div[role="radiogroup"] {{
+            display: flex !important;
+            justify-content: space-between !important;
+            flex-direction: row !important;
+            gap: 0.3rem;
+        }}
+        /* 각 숫자 간격 조절 */
+        div[role="radiogroup"] label {{
+            margin: 0 !important;
+        }}
+        /* 숫자와 버튼 수직 정렬 */
+        div[role="radiogroup"] > label > div {{
+            display: flex;
+            align-items: center;
+        }}
+        /* 위아래 여백 감소 */
+        div[data-testid="stRadio"] {{
+            margin-top: -10px;
+            margin-bottom: -10px;
+        }}
         </style>
         
         <div class="sticky-image">
@@ -122,7 +144,6 @@ elif st.session_state.page == 'main_survey':
         
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
-    # 이후 문항 코드들은 들여쓰기 없이 쭉 작성하시면 됩니다.
     step_responses = {}
     adj_pairs = [
         ("촌스럽다", "세련되다"), ("소박하다", "고급스럽다"), ("수수하다", "화려하다"), 
@@ -131,291 +152,74 @@ elif st.session_state.page == 'main_survey':
         ("복잡하다", "간결하다"), ("밋밋하다", "화사하다")
     ]
 
-   # --- (1) 감성 인지 평가 ---
-st.subheader("1. 감성 인지 평가")
+    # --- (1) 감성 인지 평가 ---
+    st.subheader("1. 감성 인지 평가")
+    
+    # 1-1. 좌측 이미지 평가
+    st.markdown('<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>', unsafe_allow_html=True)
+    for i, (l, r) in enumerate(adj_pairs):
+        cols = st.columns([2, 8, 2])
+        with cols[0]:
+            st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
+        with cols[1]: 
+            key_name = f"{current_img_file}_Left_emo{i+1}"
+            step_responses[key_name] = st.radio(f"radio_{current_img_file}_L_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
+        with cols[2]:
+            st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
 
-# radio 버튼 스타일 조정 CSS
-st.markdown("""
-<style>
+    st.write("---")
 
-/* 라디오 그룹 가로 정렬 */
-div[role="radiogroup"] {
-    display: flex !important;
-    justify-content: space-between !important;
-    flex-direction: row !important;
-    gap: 0.3rem;
-}
+    # 1-2. 우측 이미지 평가
+    st.markdown("<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>", unsafe_allow_html=True)
+    for i, (l, r) in enumerate(adj_pairs):
+        cols = st.columns([2, 8, 2])
+        with cols[0]:
+            st.markdown(f'<div style="text-align:right; padding-top:8px; font-size:16px;">{l}</div>', unsafe_allow_html=True)
+        with cols[1]: 
+            key_name = f"{current_img_file}_Right_emo{i+1}"
+            step_responses[key_name] = st.radio(f"radio_{current_img_file}_R_emo{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
+        with cols[2]:
+            st.markdown(f'<div style="text-align:left; padding-top:8px; font-size:16px;">{r}</div>', unsafe_allow_html=True)
 
-/* 각 숫자 간격 조절 */
-div[role="radiogroup"] label {
-    margin: 0 !important;
-}
-
-/* 숫자와 버튼 수직 정렬 */
-div[role="radiogroup"] > label > div {
-    display: flex;
-    align-items: center;
-}
-
-/* 위아래 여백 감소 */
-div[data-testid="stRadio"] {
-    margin-top: -10px;
-    margin-bottom: -10px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-adj_pairs = [
-    ("촌스럽다", "세련되다"),
-    ("소박하다", "고급스럽다"),
-    ("수수하다", "화려하다"),
-    ("순수하다", "섹시하다"),
-    ("투박하다", "우아하다"),
-    ("단조롭다", "드라마틱하다"),
-    ("온화하다", "강렬하다"),
-    ("여리다", "단단하다"),
-    ("부드럽다", "날카롭다"),
-    ("복잡하다", "간결하다"),
-    ("밋밋하다", "화사하다")
-]
-
-# -----------------------------
-# 1-1. 좌측 이미지 평가
-# -----------------------------
-st.markdown(
-    '<div class="section-header"><strong>1-1. 좌측 이미지 평가</strong></div>',
-    unsafe_allow_html=True
-)
-
-for i, (l, r) in enumerate(adj_pairs):
-
-    cols = st.columns([2, 8, 2])
-
-    # 왼쪽 형용사
-    with cols[0]:
-        st.markdown(
-            f"""
-            <div style="
-                text-align:right;
-                padding-top:8px;
-                font-size:16px;
-            ">
-            {l}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # 가운데 7점 척도
-    with cols[1]:
-        key_name = f"{current_img_file}_Left_emo{i+1}"
-
-        step_responses[key_name] = st.radio(
-            f"slider_{current_img_file}_L_emo{i}",
-            options=[1,2,3,4,5,6,7],
-            horizontal=True,
-            index=3,
-            label_visibility="collapsed"
-        )
-
-    # 오른쪽 형용사
-    with cols[2]:
-        st.markdown(
-            f"""
-            <div style="
-                text-align:left;
-                padding-top:8px;
-                font-size:16px;
-            ">
-            {r}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-st.write("---")
-
-# -----------------------------
-# 1-2. 우측 이미지 평가
-# -----------------------------
-st.markdown(
-    "<div class='section-header'><strong>1-2. 우측 이미지 평가</strong></div>",
-    unsafe_allow_html=True
-)
-
-for i, (l, r) in enumerate(adj_pairs):
-
-    cols = st.columns([2, 8, 2])
-
-    # 왼쪽 형용사
-    with cols[0]:
-        st.markdown(
-            f"""
-            <div style="
-                text-align:right;
-                padding-top:8px;
-                font-size:16px;
-            ">
-            {l}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # 가운데 7점 척도
-    with cols[1]:
-        key_name = f"{current_img_file}_Right_emo{i+1}"
-
-        step_responses[key_name] = st.radio(
-            f"slider_{current_img_file}_R_emo{i}",
-            options=[1,2,3,4,5,6,7],
-            horizontal=True,
-            index=3,
-            label_visibility="collapsed"
-        )
-
-    # 오른쪽 형용사
-    with cols[2]:
-        st.markdown(
-            f"""
-            <div style="
-                text-align:left;
-                padding-top:8px;
-                font-size:16px;
-            ">
-            {r}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-st.write("---")
+    st.write("---")
 
     # --- (2) 수용 의도 평가 ---
-st.subheader("2. 수용 의도 평가")
+    st.subheader("2. 수용 의도 평가")
+    acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
+    for i, item in enumerate(acc_items):
+        st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
+        cols = st.columns([2, 8, 2])
+        with cols[0]:
+            st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
+        with cols[1]: 
+            key_name = f"{current_img_file}_acc{i+1}"
+            step_responses[key_name] = st.radio(f"radio_{current_img_file}_acc{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
+        with cols[2]:
+            st.markdown('<div style="text-align:left; padding-top:8px; font-size:15px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-acc_items = [
-    "수용할 가능성",
-    "구매할 의향",
-    "추천할 의향"
-]
-
-for i, item in enumerate(acc_items):
-
-    st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-
-    cols = st.columns([2, 8, 2])
-
-    # 왼쪽 라벨
-    with cols[0]:
-        st.markdown(
-            """
-            <div style="
-                text-align:right;
-                padding-top:8px;
-                font-size:15px;
-            ">
-            전혀 아니다
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # 가운데 7점 척도
-    with cols[1]:
-        key_name = f"{current_img_file}_acc{i+1}"
-
-        step_responses[key_name] = st.radio(
-            f"slider_{current_img_file}_acc{i}",
-            options=[1,2,3,4,5,6,7],
-            horizontal=True,
-            index=3,
-            label_visibility="collapsed"
-        )
-
-    # 오른쪽 라벨
-    with cols[2]:
-        st.markdown(
-            """
-            <div style="
-                text-align:left;
-                padding-top:8px;
-                font-size:15px;
-            ">
-            매우 그렇다
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-st.write("---")
+    st.write("---")
 
     # --- (3) 재해석 정도 평가 ---
-st.subheader("3. 재해석 정도 평가")
+    st.subheader("3. 재해석 정도 평가")
+    re_items = ["실루엣", "색상", "소재", "디테일"]
+    for i, item in enumerate(re_items):
+        st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
+        cols = st.columns([2, 8, 2])
+        with cols[0]:
+            st.markdown('<div style="text-align:right; padding-top:8px; font-size:15px;">전혀 아니다</div>', unsafe_allow_html=True)
+        with cols[1]: 
+            key_name = f"{current_img_file}_re{i+1}"
+            step_responses[key_name] = st.radio(f"radio_{current_img_file}_re{i}", options=[1,2,3,4,5,6,7], horizontal=True, index=3, label_visibility="collapsed")
+        with cols[2]:
+            st.markdown('<div style="text-align:left; padding-top:8px; font-size:15px;">매우 그렇다</div>', unsafe_allow_html=True)
 
-re_items = [
-    "실루엣",
-    "색상",
-    "소재",
-    "디테일"
-]
-
-for i, item in enumerate(re_items):
-
-    st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-
-    cols = st.columns([2, 8, 2])
-
-    # 왼쪽 라벨
-    with cols[0]:
-        st.markdown(
-            """
-            <div style="
-                text-align:right;
-                padding-top:8px;
-                font-size:15px;
-            ">
-            전혀 아니다
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # 가운데 7점 척도
-    with cols[1]:
-        key_name = f"{current_img_file}_re{i+1}"
-
-        step_responses[key_name] = st.radio(
-            f"slider_{current_img_file}_re{i}",
-            options=[1,2,3,4,5,6,7],
-            horizontal=True,
-            index=3,
-            label_visibility="collapsed"
-        )
-
-    # 오른쪽 라벨
-    with cols[2]:
-        st.markdown(
-            """
-            <div style="
-                text-align:left;
-                padding-top:8px;
-                font-size:15px;
-            ">
-            매우 그렇다
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-st.write("---")   
+    st.write("---")    
  
+    # [하단 수동 스크롤 버튼]
     components.html(
         """
         <script>
         function goToTop() {
-            // 스트림릿 버전에 따라 스크롤되는 구역의 이름이 다를 수 있어 모든 구역을 찌릅니다.
             var targets = [
                 window.parent.document.querySelector('[data-testid="stAppViewContainer"]'),
                 window.parent.document.querySelector('[data-testid="stMain"]'),
@@ -451,22 +255,17 @@ st.write("---")
         """,
         height=60
     )
-    # 이동 버튼 로직
+    
+    # --- 이동 버튼 및 구글 시트 저장 로직 ---
     if idx < total_sets - 1:
-        # 기존 버튼 코드를 아래 내용으로 교체하세요
         if st.button("평가 완료 -> 다음 이미지로"):
-            # 1. 현재까지의 응답 저장
             st.session_state.all_responses.update(step_responses)
-            
-            # 2. 다음 이미지 인덱스로 증가
             st.session_state.current_idx += 1
             
-            # 3. [추가] 화면 환기 및 브라우저 상태 리셋을 위한 짧은 대기
             with st.spinner("다음 문항을 불러오는 중..."):
-                import time # (파일 최상단에 import time이 없다면 여기서 수행해도 됩니다)
+                import time 
                 time.sleep(0.1) 
             
-            # 4. 페이지 새로고침 (이때 위에서 넣은 스크롤 자바스크립트가 실행됩니다)
             st.rerun()
     else:
         if st.button("모든 설문 완료 및 제출"):
@@ -474,30 +273,22 @@ st.write("---")
             final_data = {**st.session_state.user_data, **st.session_state.all_responses}
     
             conn = st.connection("gsheets", type=GSheetsConnection)
-    
-    # 1. 실제 탭 이름 가져오기 (이전과 동일)
             spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
             sh = conn.client._client.open_by_url(spreadsheet_url)
             real_sheet_name = sh.get_worksheet(0).title
 
-    # 2. [핵심 수정] ttl=0 을 추가하여 항상 "최신" 데이터를 읽어옵니다.
             try:
-        # ttl=0은 캐시 수명을 0초로 설정하여 무조건 새로 읽어오게 합니다.
                 existing_data = conn.read(worksheet=real_sheet_name, ttl=0)
             except Exception:
                 existing_data = pd.DataFrame()
 
-    # 3. 데이터 합치기
             new_data = pd.DataFrame([final_data])
     
-    # 기존 데이터가 비어있지 않다면 아래에 행을 추가합니다.
             if not existing_data.empty:
-        # concat 시 ignore_index=True를 주면 인덱스가 꼬이지 않고 아래로 쌓입니다.
                 updated_df = pd.concat([existing_data, new_data], ignore_index=True)
             else:
                 updated_df = new_data
     
-    # 4. 시트에 전체 데이터 덮어쓰기 (기존 내용 + 새 내용)
             conn.update(worksheet=real_sheet_name, data=updated_df)
     
             st.success("데이터가 성공적으로 저장되었습니다! 응답해주셔서 감사합니다!")
