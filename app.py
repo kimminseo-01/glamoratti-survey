@@ -79,12 +79,12 @@ def apply_common_css():
             text-align: center; 
         }
         .sticky-image img {
-            max-height: 600px; 
+            max-height: 1200px; 
             width: auto;
             max-width: 100%;
             object-fit: contain;
         }
-        .spacer { margin-top: 100px; }
+        .spacer { margin-top: 200px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         </style>
