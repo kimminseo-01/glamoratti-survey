@@ -37,6 +37,17 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
+# --- 🌟 새로고침/창 닫기 방지 스크립트 ---
+def prevent_refresh_script():
+    components.html("""
+    <script>
+    window.parent.addEventListener("beforeunload", function (e) {
+        e.preventDefault();
+        e.returnValue = '';
+    });
+    </script>
+    """, height=0)
+
 # --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
 def auto_scroll_top_script():
     return """
@@ -132,6 +143,7 @@ if st.session_state.page == 'intro':
 
 # --- 3. [2페이지] 인구통계학적 설문 ---
 elif st.session_state.page == 'demographics':
+    prevent_refresh_script()
     st.title("인구통계학적 정보")
     st.write("---")
     gender = st.radio("본 설문조사는 한국 거주 여성을 대상으로 하고 있습니다. 귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
@@ -150,6 +162,7 @@ elif st.session_state.page == 'demographics':
 
 # --- 4. [3페이지] 파트 1: 감성 인지 평가 ---
 elif st.session_state.page == 'part1_survey':
+    prevent_refresh_script()
     idx = st.session_state.p1_idx
     apply_common_css()
     components.html(auto_scroll_top_script(), height=0)
@@ -250,6 +263,7 @@ elif st.session_state.page == 'part1_survey':
 
 # --- 5. [4페이지] 파트 2 중간 안내 ---
 elif st.session_state.page == 'part2_intro':
+    prevent_refresh_script()
     st.title("🎉 파트 1 완료!")
     st.success("단일 이미지 감성 평가가 모두 끝났습니다.")
     st.subheader("[파트 2] 비교 평가 안내")
@@ -260,6 +274,7 @@ elif st.session_state.page == 'part2_intro':
 
 # --- 6. [5페이지] 파트 2: 비교 평가 ---
 elif st.session_state.page == 'part2_survey':
+    prevent_refresh_script()
     idx = st.session_state.p2_idx
     apply_common_css()
     components.html(auto_scroll_top_script(), height=0)
