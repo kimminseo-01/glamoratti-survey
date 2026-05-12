@@ -42,43 +42,27 @@ def auto_scroll_top_script():
     return """
     <script>
     function scrollParent() {
-        // 전체 브라우저 스크롤
         window.parent.scrollTo(0, 0);
-
-        // Streamlit 내부 컨테이너들
-        const selectors = [
-            '.main',
-            '[data-testid="stAppViewContainer"]',
-            '[data-testid="stMain"]',
-            'section.main'
-        ];
-
+        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
             if (el) {
                 el.scrollTop = 0;
                 if (el.scrollTo) {
-                    el.scrollTo({
-                        top: 0,
-                        behavior: 'instant'
-                    });
+                    el.scrollTo({ top: 0, behavior: 'instant' });
                 }
             }
         });
-
-        // html/body 강제 초기화
         window.parent.document.documentElement.scrollTop = 0;
         window.parent.document.body.scrollTop = 0;
     }
-
-    // 여러 번 실행해서 Streamlit 렌더링 타이밍 대응
     setTimeout(scrollParent, 50);
     setTimeout(scrollParent, 150);
     setTimeout(scrollParent, 300);
     </script>
     """
 
-# --- 공통 CSS ---
+# --- 공통 CSS (슬라이더 스타일 적용) ---
 def apply_common_css():
     st.markdown("""
         <style>
@@ -104,44 +88,24 @@ def apply_common_css():
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         
-        /* radio 전체 wrapper */
-        div.row-widget.stRadio > div {
-            display: flex;
-            justify-content: center;
-            width: 100%;
+        /* ===== 슬라이더 스타일 수정 ===== */
+        /* 전체 슬라이더 트랙 */
+        .stSlider [data-baseweb="slider"] > div > div {
+            background: #D9D9D9 !important;
         }
-
-        /* radio group */
-        div[role="radiogroup"] {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center;
-            width: 100%;
-            gap: 16px;
+        /* 색 채워지는 부분 제거 */
+        .stSlider [data-baseweb="slider"] > div > div > div {
+            background: #D9D9D9 !important;
         }
-
-        /* 개별 버튼 */
-        div[role="radiogroup"] label {
-            margin: 0 !important;
-            display: flex !important;
-            justify-content: center;
-            align-items: center;
+        /* 동그라미 손잡이 */
+        .stSlider [role="slider"] {
+            background-color: white !important;
+            border: 2px solid #999 !important;
+            box-shadow: none !important;
         }
-
-        /* 숫자 크기 */
-        div[role="radiogroup"] label p {
-            font-size: 17px !important;
-        }
-
-        /* 모바일 */
-        @media (max-width: 768px) {
-            div[role="radiogroup"] {
-                gap: 8px;
-            }
-
-            div[role="radiogroup"] label p {
-                font-size: 15px !important;
-            }
+        /* 숫자 표시 숨기기 */
+        .stSlider div[data-baseweb="slider"] + div {
+            display: none;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -203,8 +167,6 @@ elif st.session_state.page == 'part1_survey':
 
     for i, (l, r) in enumerate(adj_pairs):
         key_name = f"{current_img_file}_emo{i+1}"
-        if key_name not in st.session_state: st.session_state[key_name] = 4
-        
         center_col = st.columns([1,6,1])[1]
         
         with center_col:
@@ -223,19 +185,19 @@ elif st.session_state.page == 'part1_survey':
                 """,
                 unsafe_allow_html=True
             )
-
-            score = st.radio(
+            score = st.slider(
                 "",
-                [1,2,3,4,5,6,7],
-                horizontal=True,
+                min_value=1,
+                max_value=7,
+                value=4,
+                step=1,
                 key=key_name,
-                index=3,
                 label_visibility="collapsed"
             )
             step_responses[key_name] = score
         st.write("")
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
+    # 🌟 수동 맨 위로 버튼
     components.html("""
     <script>
     function goToTop() {
@@ -253,7 +215,9 @@ elif st.session_state.page == 'part1_survey':
     }
     </script>
     <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button>
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+            ⬆️ 화면 맨 위로
+        </button>
     </div>
     """, height=80)
     
@@ -273,10 +237,12 @@ elif st.session_state.page == 'part1_survey':
         window.parent.document.body.scrollTop = 0;
         </script>
         """, height=0)
+
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
         if st.session_state.p1_idx >= total_p1:
             st.session_state.page = 'part2_intro'
+        
         import time
         time.sleep(0.15)
         st.rerun()
@@ -312,7 +278,6 @@ elif st.session_state.page == 'part2_survey':
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
         l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_acc{i+1}"
-        if key_name not in st.session_state: st.session_state[key_name] = 4
         
         center_col = st.columns([1,6,1])[1]
         
@@ -332,13 +297,13 @@ elif st.session_state.page == 'part2_survey':
                 """,
                 unsafe_allow_html=True
             )
-
-            score = st.radio(
+            score = st.slider(
                 "",
-                [1,2,3,4,5,6,7],
-                horizontal=True,
+                min_value=1,
+                max_value=7,
+                value=4,
+                step=1,
                 key=key_name,
-                index=3,
                 label_visibility="collapsed"
             )
             step_responses[key_name] = score
@@ -350,7 +315,6 @@ elif st.session_state.page == 'part2_survey':
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
         l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_re{i+1}"
-        if key_name not in st.session_state: st.session_state[key_name] = 4
         
         center_col = st.columns([1,6,1])[1]
         
@@ -370,13 +334,13 @@ elif st.session_state.page == 'part2_survey':
                 """,
                 unsafe_allow_html=True
             )
-
-            score = st.radio(
+            score = st.slider(
                 "",
-                [1,2,3,4,5,6,7],
-                horizontal=True,
+                min_value=1,
+                max_value=7,
+                value=4,
+                step=1,
                 key=key_name,
-                index=3,
                 label_visibility="collapsed"
             )
             step_responses[key_name] = score
