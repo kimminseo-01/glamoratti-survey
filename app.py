@@ -26,7 +26,7 @@ if 'p1_order' not in st.session_state:
 
 # 파트 2 (이미지 쌍 pair) 랜덤 리스트
 if 'p2_order' not in st.session_state:
-    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
+    p2_list = [f"pair{i}.png" for i in range(1, 14)] 
     random.shuffle(p2_list)
     st.session_state.p2_order = p2_list
 
@@ -62,7 +62,7 @@ def auto_scroll_top_script():
     </script>
     """
 
-# --- 공통 CSS ---
+# --- 공통 CSS (라디오 버튼 CSS 추가됨) ---
 def apply_common_css():
     st.markdown("""
         <style>
@@ -87,6 +87,28 @@ def apply_common_css():
         .spacer { margin-top: 300px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
+        
+        /* 🌟 추가된 라디오 버튼 CSS */
+        /* radio 전체를 가운데 정렬 */
+        div[role="radiogroup"] {
+            justify-content: center !important;
+            gap: 18px !important;
+        }
+
+        /* 각 radio 버튼 정렬 */
+        div[role="radiogroup"] > label {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+        }
+
+        /* 모바일 대응 */
+        @media (max-width: 768px) {
+            div[role="radiogroup"] {
+                gap: 10px !important;
+            }
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -146,19 +168,38 @@ elif st.session_state.page == 'part1_survey':
     st.subheader("1. 감성 평가")
 
     for i, (l, r) in enumerate(adj_pairs):
-        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
-        with cols[0]: st.markdown(f'<div style="text-align:right; padding-top:8px;">{l}</div>', unsafe_allow_html=True)
         key_name = f"{current_img_file}_emo{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
-        for score in range(1, 8):
-            with cols[score]:
-                if st.button(f"{score}", key=f"p1_{idx}_{i}_{score}", use_container_width=True, type="primary" if st.session_state[key_name] == score else "secondary"):
-                    st.session_state[key_name] = score
-                    st.rerun()
-        step_responses[key_name] = st.session_state[key_name]
-        with cols[8]: st.markdown(f'<div style="text-align:left; padding-top:8px;">{r}</div>', unsafe_allow_html=True)
+        
+        # 라디오 버튼 상단 양극단 텍스트
+        st.markdown(
+            f"""
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                margin-bottom:-12px;
+                font-size:15px;
+                font-weight:500;
+            ">
+                <span>{l}</span>
+                <span>{r}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
+        # 라디오 버튼 적용
+        score = st.radio(
+            label="hidden",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            key=key_name,
+            label_visibility="collapsed"
+        )
+        step_responses[key_name] = score
+        st.write("") # 문항 간 간격 약간 추가
+
+    # 🌟 수동 맨 위로 버튼
     components.html("""
     <script>
     function goToTop() {
@@ -204,6 +245,7 @@ elif st.session_state.page == 'part1_survey':
         time.sleep(0.15)
         st.rerun()
 
+# --- 5. [4페이지] 파트 2 중간 안내 ---
 elif st.session_state.page == 'part2_intro':
     st.title("🎉 파트 1 완료!")
     st.success("단일 이미지 감성 평가가 모두 끝났습니다.")
@@ -213,6 +255,7 @@ elif st.session_state.page == 'part2_intro':
         st.session_state.page = 'part2_survey'
         st.rerun()
 
+# --- 6. [5페이지] 파트 2: 비교 평가 ---
 elif st.session_state.page == 'part2_survey':
     idx = st.session_state.p2_idx
     apply_common_css()
@@ -231,33 +274,69 @@ elif st.session_state.page == 'part2_survey':
     acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
     for i, item in enumerate(acc_items):
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
-        with cols[0]: st.markdown('<div style="text-align:right; padding-top:8px;">전혀 아니다</div>', unsafe_allow_html=True)
+        l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_acc{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
-        for score in range(1, 8):
-            with cols[score]:
-                if st.button(f"{score}", key=f"p2_acc_{idx}_{i}_{score}", use_container_width=True, type="primary" if st.session_state[key_name] == score else "secondary"):
-                    st.session_state[key_name] = score
-                    st.rerun()
-        step_responses[key_name] = st.session_state[key_name]
-        with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
+        
+        st.markdown(
+            f"""
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                margin-bottom:-12px;
+                font-size:15px;
+                font-weight:500;
+            ">
+                <span>{l}</span>
+                <span>{r}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        score = st.radio(
+            label="hidden",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            key=key_name,
+            label_visibility="collapsed"
+        )
+        step_responses[key_name] = score
+        st.write("")
 
     st.subheader("3. 재해석 정도 평가")
     re_items = ["실루엣", "색상", "소재", "디테일"]
     for i, item in enumerate(re_items):
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-        cols = st.columns([2.5, 1, 1, 1, 1, 1, 1, 1, 2.5])
-        with cols[0]: st.markdown('<div style="text-align:right; padding-top:8px;">전혀 아니다</div>', unsafe_allow_html=True)
+        l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_re{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
-        for score in range(1, 8):
-            with cols[score]:
-                if st.button(f"{score}", key=f"p2_re_{idx}_{i}_{score}", use_container_width=True, type="primary" if st.session_state[key_name] == score else "secondary"):
-                    st.session_state[key_name] = score
-                    st.rerun()
-        step_responses[key_name] = st.session_state[key_name]
-        with cols[8]: st.markdown('<div style="text-align:left; padding-top:8px;">매우 그렇다</div>', unsafe_allow_html=True)
+        
+        st.markdown(
+            f"""
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                margin-bottom:-12px;
+                font-size:15px;
+                font-weight:500;
+            ">
+                <span>{l}</span>
+                <span>{r}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        score = st.radio(
+            label="hidden",
+            options=[1,2,3,4,5,6,7],
+            horizontal=True,
+            key=key_name,
+            label_visibility="collapsed"
+        )
+        step_responses[key_name] = score
+        st.write("")
 
     # 🌟 수동 맨 위로 버튼
     components.html("""
