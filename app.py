@@ -157,8 +157,27 @@ elif st.session_state.page == 'demographics':
             st.error("모든 문항에 응답해 주세요.")
         else:
             st.session_state.user_data.update({"성별": gender, "연령": age, "학력": edu, "분야": major, "의류지출": spending})
-            st.session_state.page = 'part1_survey'
+            # 🌟 복구됨: 바로 파트 1 설문으로 가지 않고 파트 1 안내 페이지로 이동
+            st.session_state.page = 'part1_intro'
             st.rerun()
+
+# --- 🌟 복구됨: [새로 추가된 페이지] 파트 1 중간 안내 ---
+elif st.session_state.page == 'part1_intro':
+    prevent_refresh_script()
+    components.html(auto_scroll_top_script(), height=0)
+    st.title("📝 [파트 1] 감성 평가 안내")
+    st.write("---")
+    st.info("""
+    지금부터 **[파트 1] 감성 평가**가 시작됩니다.
+    
+    - 지금부터 여성 아우터 이미지를 순차적으로 보여드립니다. 각 이미지를 충분히 살펴보신 후, 해당 아우터에 대해 느끼시는 감성에 대해 응답해 주십시오.
+    - 정답이 있는 것이 아니므로, 직관적으로 느끼신 대로 응답해 주시면 됩니다.
+    - 자극물 제시 순서는 참여자별로 무작위화 합니다.
+    """)
+    st.write("")
+    if st.button("파트 1 시작하기", use_container_width=True):
+        st.session_state.page = 'part1_survey'
+        st.rerun()
 
 # --- 4. [3페이지] 파트 1: 감성 인지 평가 ---
 elif st.session_state.page == 'part1_survey':
@@ -211,7 +230,7 @@ elif st.session_state.page == 'part1_survey':
             step_responses[key_name] = score
         st.write("")
 
-    # 🌟 수동 맨 위로 버튼
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
     components.html("""
     <script>
     function goToTop() {
@@ -264,11 +283,22 @@ elif st.session_state.page == 'part1_survey':
 # --- 5. [4페이지] 파트 2 중간 안내 ---
 elif st.session_state.page == 'part2_intro':
     prevent_refresh_script()
+    components.html(auto_scroll_top_script(), height=0)
     st.title("🎉 파트 1 완료!")
-    st.success("단일 이미지 감성 평가가 모두 끝났습니다.")
-    st.subheader("[파트 2] 비교 평가 안내")
-    st.write("지금부터는 이미지 쌍을 비교하며 우측 이미지에 대한 수용 의도와 재해석 정도를 평가합니다.")
-    if st.button("파트 2 시작하기"):
+    st.success("단일 이미지 감성 평가가 모두 끝났습니다. 수고하셨습니다!")
+    st.write("---")
+    
+    # 🌟 복구됨: 파트 2 상세 안내문
+    st.subheader("📝 [파트 2] 비교 평가 안내")
+    st.info("""
+    지금부터는 **[파트 2] 비교 평가**가 시작됩니다.
+    
+    - 지금부터는 1980년대 아우터 이미지(좌측)와 이를 재해석한 현대의 아우터 이미지(우측)가 쌍으로 제시됩니다.
+    - 좌측 이미지와 비교하여 **우측 이미지**에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.
+    - 자극물 제시 순서는 참여자별로 무작위화 합니다. 
+    """)
+    st.write("")
+    if st.button("파트 2 시작하기", use_container_width=True):
         st.session_state.page = 'part2_survey'
         st.rerun()
 
@@ -380,7 +410,9 @@ elif st.session_state.page == 'part2_survey':
     }
     </script>
     <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button>
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+            ⬆️ 화면 맨 위로
+        </button>
     </div>
     """, height=80)
     
