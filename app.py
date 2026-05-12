@@ -42,20 +42,36 @@ def auto_scroll_top_script():
     return """
     <script>
     function scrollParent() {
+        // 전체 브라우저 스크롤
         window.parent.scrollTo(0, 0);
-        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
+
+        // Streamlit 내부 컨테이너들
+        const selectors = [
+            '.main',
+            '[data-testid="stAppViewContainer"]',
+            '[data-testid="stMain"]',
+            'section.main'
+        ];
+
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
             if (el) {
                 el.scrollTop = 0;
                 if (el.scrollTo) {
-                    el.scrollTo({ top: 0, behavior: 'instant' });
+                    el.scrollTo({
+                        top: 0,
+                        behavior: 'instant'
+                    });
                 }
             }
         });
+
+        // html/body 강제 초기화
         window.parent.document.documentElement.scrollTop = 0;
         window.parent.document.body.scrollTop = 0;
     }
+
+    // 여러 번 실행해서 Streamlit 렌더링 타이밍 대응
     setTimeout(scrollParent, 50);
     setTimeout(scrollParent, 150);
     setTimeout(scrollParent, 300);
@@ -189,35 +205,37 @@ elif st.session_state.page == 'part1_survey':
         key_name = f"{current_img_file}_emo{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
         
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                width:100%;
-                font-size:15px;
-                font-weight:500;
-                margin-bottom:-10px;
-            ">
-                <span>{l}</span>
-                <span>{r}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        center_col = st.columns([1,6,1])[1]
+        
+        with center_col:
+            st.markdown(
+                f"""
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    font-size:15px;
+                    font-weight:500;
+                    margin-bottom:-10px;
+                ">
+                    <span>{l}</span>
+                    <span>{r}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        score = st.radio(
-            "",
-            [1,2,3,4,5,6,7],
-            horizontal=True,
-            key=key_name,
-            index=3,
-            label_visibility="collapsed"
-        )
-        step_responses[key_name] = score
+            score = st.radio(
+                "",
+                [1,2,3,4,5,6,7],
+                horizontal=True,
+                key=key_name,
+                index=3,
+                label_visibility="collapsed"
+            )
+            step_responses[key_name] = score
         st.write("")
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
     components.html("""
     <script>
     function goToTop() {
@@ -235,13 +253,10 @@ elif st.session_state.page == 'part1_survey':
     }
     </script>
     <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
-            ⬆️ 화면 맨 위로
-        </button>
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button>
     </div>
     """, height=80)
     
-    # 🌟 파트 1 이동 버튼 로직
     if st.button("다음 이미지로 ->", use_container_width=True):
         components.html("""
         <script>
@@ -258,12 +273,10 @@ elif st.session_state.page == 'part1_survey':
         window.parent.document.body.scrollTop = 0;
         </script>
         """, height=0)
-
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
         if st.session_state.p1_idx >= total_p1:
             st.session_state.page = 'part2_intro'
-        
         import time
         time.sleep(0.15)
         st.rerun()
@@ -301,32 +314,34 @@ elif st.session_state.page == 'part2_survey':
         key_name = f"{current_img_file}_acc{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
         
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                width:100%;
-                font-size:15px;
-                font-weight:500;
-                margin-bottom:-10px;
-            ">
-                <span>{l}</span>
-                <span>{r}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        center_col = st.columns([1,6,1])[1]
+        
+        with center_col:
+            st.markdown(
+                f"""
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    font-size:15px;
+                    font-weight:500;
+                    margin-bottom:-10px;
+                ">
+                    <span>{l}</span>
+                    <span>{r}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        score = st.radio(
-            "",
-            [1,2,3,4,5,6,7],
-            horizontal=True,
-            key=key_name,
-            index=3,
-            label_visibility="collapsed"
-        )
-        step_responses[key_name] = score
+            score = st.radio(
+                "",
+                [1,2,3,4,5,6,7],
+                horizontal=True,
+                key=key_name,
+                index=3,
+                label_visibility="collapsed"
+            )
+            step_responses[key_name] = score
         st.write("")
 
     st.subheader("3. 재해석 정도 평가")
@@ -337,32 +352,34 @@ elif st.session_state.page == 'part2_survey':
         key_name = f"{current_img_file}_re{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
         
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                width:100%;
-                font-size:15px;
-                font-weight:500;
-                margin-bottom:-10px;
-            ">
-                <span>{l}</span>
-                <span>{r}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        center_col = st.columns([1,6,1])[1]
+        
+        with center_col:
+            st.markdown(
+                f"""
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    font-size:15px;
+                    font-weight:500;
+                    margin-bottom:-10px;
+                ">
+                    <span>{l}</span>
+                    <span>{r}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        score = st.radio(
-            "",
-            [1,2,3,4,5,6,7],
-            horizontal=True,
-            key=key_name,
-            index=3,
-            label_visibility="collapsed"
-        )
-        step_responses[key_name] = score
+            score = st.radio(
+                "",
+                [1,2,3,4,5,6,7],
+                horizontal=True,
+                key=key_name,
+                index=3,
+                label_visibility="collapsed"
+            )
+            step_responses[key_name] = score
         st.write("")
 
     # 🌟 수동 맨 위로 버튼
