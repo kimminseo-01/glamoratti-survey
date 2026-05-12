@@ -26,7 +26,7 @@ if 'p1_order' not in st.session_state:
 
 # 파트 2 (이미지 쌍 pair) 랜덤 리스트
 if 'p2_order' not in st.session_state:
-    p2_list = [f"pair{i}.png" for i in range(1, 14)] 
+    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
     random.shuffle(p2_list)
     st.session_state.p2_order = p2_list
 
@@ -37,7 +37,7 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 자동 스크롤 최종 안정화 버전 ---
+# --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
 def auto_scroll_top_script():
     return """
     <script>
@@ -62,7 +62,7 @@ def auto_scroll_top_script():
     </script>
     """
 
-# --- 공통 CSS (라디오 버튼 CSS 추가됨) ---
+# --- 공통 CSS ---
 def apply_common_css():
     st.markdown("""
         <style>
@@ -88,25 +88,43 @@ def apply_common_css():
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
         
-        /* 🌟 추가된 라디오 버튼 CSS */
-        /* radio 전체를 가운데 정렬 */
+        /* radio 전체 wrapper */
+        div.row-widget.stRadio > div {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        /* radio group */
         div[role="radiogroup"] {
-            justify-content: center !important;
-            gap: 18px !important;
-        }
-
-        /* 각 radio 버튼 정렬 */
-        div[role="radiogroup"] > label {
             display: flex !important;
-            align-items: center !important;
             justify-content: center !important;
-            margin: 0 !important;
+            align-items: center;
+            width: 100%;
+            gap: 16px;
         }
 
-        /* 모바일 대응 */
+        /* 개별 버튼 */
+        div[role="radiogroup"] label {
+            margin: 0 !important;
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 숫자 크기 */
+        div[role="radiogroup"] label p {
+            font-size: 17px !important;
+        }
+
+        /* 모바일 */
         @media (max-width: 768px) {
             div[role="radiogroup"] {
-                gap: 10px !important;
+                gap: 8px;
+            }
+
+            div[role="radiogroup"] label p {
+                font-size: 15px !important;
             }
         }
         </style>
@@ -171,15 +189,15 @@ elif st.session_state.page == 'part1_survey':
         key_name = f"{current_img_file}_emo{i+1}"
         if key_name not in st.session_state: st.session_state[key_name] = 4
         
-        # 라디오 버튼 상단 양극단 텍스트
         st.markdown(
             f"""
             <div style="
                 display:flex;
                 justify-content:space-between;
-                margin-bottom:-12px;
+                width:100%;
                 font-size:15px;
                 font-weight:500;
+                margin-bottom:-10px;
             ">
                 <span>{l}</span>
                 <span>{r}</span>
@@ -188,18 +206,18 @@ elif st.session_state.page == 'part1_survey':
             unsafe_allow_html=True
         )
 
-        # 라디오 버튼 적용
         score = st.radio(
-            label="hidden",
-            options=[1,2,3,4,5,6,7],
+            "",
+            [1,2,3,4,5,6,7],
             horizontal=True,
             key=key_name,
+            index=3,
             label_visibility="collapsed"
         )
         step_responses[key_name] = score
-        st.write("") # 문항 간 간격 약간 추가
+        st.write("")
 
-    # 🌟 수동 맨 위로 버튼
+    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전 적용)
     components.html("""
     <script>
     function goToTop() {
@@ -217,10 +235,13 @@ elif st.session_state.page == 'part1_survey':
     }
     </script>
     <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button>
+        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+            ⬆️ 화면 맨 위로
+        </button>
     </div>
     """, height=80)
     
+    # 🌟 파트 1 이동 버튼 로직
     if st.button("다음 이미지로 ->", use_container_width=True):
         components.html("""
         <script>
@@ -237,10 +258,12 @@ elif st.session_state.page == 'part1_survey':
         window.parent.document.body.scrollTop = 0;
         </script>
         """, height=0)
+
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
         if st.session_state.p1_idx >= total_p1:
             st.session_state.page = 'part2_intro'
+        
         import time
         time.sleep(0.15)
         st.rerun()
@@ -283,9 +306,10 @@ elif st.session_state.page == 'part2_survey':
             <div style="
                 display:flex;
                 justify-content:space-between;
-                margin-bottom:-12px;
+                width:100%;
                 font-size:15px;
                 font-weight:500;
+                margin-bottom:-10px;
             ">
                 <span>{l}</span>
                 <span>{r}</span>
@@ -295,10 +319,11 @@ elif st.session_state.page == 'part2_survey':
         )
 
         score = st.radio(
-            label="hidden",
-            options=[1,2,3,4,5,6,7],
+            "",
+            [1,2,3,4,5,6,7],
             horizontal=True,
             key=key_name,
+            index=3,
             label_visibility="collapsed"
         )
         step_responses[key_name] = score
@@ -317,9 +342,10 @@ elif st.session_state.page == 'part2_survey':
             <div style="
                 display:flex;
                 justify-content:space-between;
-                margin-bottom:-12px;
+                width:100%;
                 font-size:15px;
                 font-weight:500;
+                margin-bottom:-10px;
             ">
                 <span>{l}</span>
                 <span>{r}</span>
@@ -329,10 +355,11 @@ elif st.session_state.page == 'part2_survey':
         )
 
         score = st.radio(
-            label="hidden",
-            options=[1,2,3,4,5,6,7],
+            "",
+            [1,2,3,4,5,6,7],
             horizontal=True,
             key=key_name,
+            index=3,
             label_visibility="collapsed"
         )
         step_responses[key_name] = score
