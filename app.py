@@ -125,6 +125,7 @@ if st.session_state.page == 'intro':
     - 설문조사 참여에 동의한다면 설문 시작하기 버튼을 눌러 설문을 시작해주십시오.
     """)
     st.warning("⚠️ 중간에 브라우저를 새로고침하면 응답이 초기화되니 주의해 주세요.")
+    st.warning("⚠️ 모든 문항에 대한 설문을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
     if st.button("설문 시작하기"):
         st.session_state.page = 'demographics'
         st.rerun()
@@ -402,5 +403,5 @@ elif st.session_state.page == 'part2_survey':
             except Exception: existing_data = pd.DataFrame()
             updated_df = pd.concat([existing_data, pd.DataFrame([final_data])], ignore_index=True)
             conn.update(worksheet=real_sheet_name, data=updated_df)
-            st.success("성공적으로 제출되었습니다!")
+            st.success("성공적으로 제출되었습니다! 설문에 참여해주셔서 감사합니다!")
             st.balloons()
