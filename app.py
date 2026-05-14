@@ -459,12 +459,17 @@ elif st.session_state.page == 'part2_survey':
             }
             
             conn = st.connection("gsheets", type=GSheetsConnection)
-            spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-            sh = conn.client._client.open_by_url(spreadsheet_url)
-            real_sheet_name = sh.get_worksheet(0).title
-            try: existing_data = conn.read(worksheet=real_sheet_name, ttl=0)
-            except Exception: existing_data = pd.DataFrame()
+            
+            # 🌟 [수정됨] A/B 유형에 따라 구글 시트의 탭 이름을 지정 ('A형' 또는 'B형')
+            target_sheet_name = f"{st.session_state.survey_type}형"
+            
+            try: 
+                existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
+            except Exception: 
+                existing_data = pd.DataFrame()
+                
             updated_df = pd.concat([existing_data, pd.DataFrame([final_data])], ignore_index=True)
-            conn.update(worksheet=real_sheet_name, data=updated_df)
+            conn.update(worksheet=target_sheet_name, data=updated_df)
+            
             st.success("성공적으로 제출되었습니다! 설문에 참여해주셔서 감사합니다!")
             st.balloons()
