@@ -49,20 +49,25 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 실시간 시트 저장 (캐시 꼬임 현상 완벽 해결) ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (데이터 증발 및 통째로 날아감 완벽 해결) ---
 def save_progress_to_sheet():
     try:
-        st.cache_data.clear() # 🌟 수정포인트 1: 스트림릿 내부 캐시를 강제로 비워 데이터 꼬임/건너뜀 방지
         conn = st.connection("gsheets", type=GSheetsConnection)
         spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         sh = conn.client._client.open_by_url(spreadsheet_url)
         target_sheet_name = f"{st.session_state.survey_type}형"
         
+        # 🌟 핵심 수정포인트: 통신 지연/오류 시 빈 시트로 착각하고 덮어씌우는 치명적인 버그 방지
         try: 
-            # 🌟 수정포인트 2: .copy()를 추가해 캐시된 데이터를 직접 수정할 때 나는 에러(Mutation 에러)를 원천 차단
-            existing_data = conn.read(worksheet=target_sheet_name, ttl=0).copy()
+            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
+            if existing_data is None:
+                existing_data = pd.DataFrame()
+            else:
+                existing_data = existing_data.copy()
         except Exception: 
-            existing_data = pd.DataFrame()
+            # 구글 API 한도를 초과해 읽기에 실패했다면, 전체 시트가 날아가는 것을 막기 위해 
+            # 이번 클릭에 한해서만 자동저장을 안전하게 건너뜁니다. (어차피 다음 클릭 시 최신화 됨)
+            return 
 
         current_data = {
             "ID": str(st.session_state.user_id),
