@@ -49,7 +49,7 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [핵심 기능] 실시간 시트 저장 (자동 저장) ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (소수점 제거 및 완벽한 덮어쓰기 로직 적용) ---
 def save_progress_to_sheet():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
@@ -61,7 +61,7 @@ def save_progress_to_sheet():
         except Exception: existing_data = pd.DataFrame()
 
         current_data = {
-            "ID": st.session_state.user_id,
+            "ID": str(st.session_state.user_id),
             "설문유형": st.session_state.survey_type,
             "현재페이지": st.session_state.page,
             "p1_idx": st.session_state.p1_idx,
@@ -72,16 +72,28 @@ def save_progress_to_sheet():
         
         new_df = pd.DataFrame([current_data])
         
-        # ID가 이미 존재하면 덮어쓰기 (Update), 없으면 추가
         if not existing_data.empty and "ID" in existing_data.columns:
-            existing_data['ID'] = existing_data['ID'].astype(str)
-            if str(st.session_state.user_id) in existing_data['ID'].values:
-                existing_data = existing_data[existing_data['ID'] != str(st.session_state.user_id)]
-        
-        updated_df = pd.concat([existing_data, new_df], ignore_index=True)
+            # 구글 시트에서 숫자가 소수점(.0)으로 읽히는 현상 완벽 방지
+            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            target_id = str(st.session_state.user_id).strip()
+            
+            if target_id in existing_data['ID_clean'].values:
+                # 밑으로 계속 쌓이지 않도록 기존 위치의 행만 업데이트(덮어쓰기)
+                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
+                for col in new_df.columns:
+                    if col not in existing_data.columns:
+                        existing_data[col] = None # 없는 열이면 생성
+                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
+                
+                updated_df = existing_data.drop(columns=['ID_clean'])
+            else:
+                # 새 응답자일 경우에만 맨 아래에 추가
+                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
+        else:
+            updated_df = pd.concat([existing_data, new_df], ignore_index=True) if not existing_data.empty else new_df
+            
         conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        # 시트 오류 시 멈추지 않도록 예외 처리
         pass
 
 # --- 새로고침 방지 ---
@@ -95,25 +107,26 @@ def prevent_refresh_script():
     </script>
     """, height=0)
 
-# --- 자동 스크롤 ---
-def auto_scroll_top_script():
-    return """
+# --- 🌟 [수정됨] 자동 스크롤 기능 (고유 식별자 추가로 무조건 실행 보장) ---
+def auto_scroll_top_script(key=""):
+    return f"""
+    <div id="scroll_trigger_{key}"></div>
     <script>
-    function scrollParent() {
+    function scrollParent() {{
         window.parent.scrollTo(0, 0);
         const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
-        selectors.forEach(selector => {
+        selectors.forEach(selector => {{
             const el = window.parent.document.querySelector(selector);
-            if (el) {
+            if (el) {{
                 el.scrollTop = 0;
-                if (el.scrollTo) {
-                    el.scrollTo({ top: 0, behavior: 'instant' });
-                }
-            }
-        });
+                if (el.scrollTo) {{
+                    el.scrollTo({{ top: 0, behavior: 'instant' }});
+                }}
+            }}
+        }});
         window.parent.document.documentElement.scrollTop = 0;
         window.parent.document.body.scrollTop = 0;
-    }
+    }}
     setTimeout(scrollParent, 50);
     setTimeout(scrollParent, 150);
     setTimeout(scrollParent, 300);
@@ -158,6 +171,7 @@ if st.session_state.page == 'intro':
     st.warning("⚠️ 본 설문조사는 만 19세 이상 한국 거주 여성을 대상으로 하고 있습니다.")
     st.warning("⚠️ 중간에 브라우저를 새로고침하면 설문이 중단되니 주의해 주세요.")
     st.warning("⚠️ 모든 문항에 대한 응답을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
+    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("처음부터 시작하기", use_container_width=True):
@@ -165,21 +179,31 @@ if st.session_state.page == 'intro':
             st.rerun()
             
     with col2:
-        # 🌟 이어하기 복구 로직
+        # 🌟 [수정됨] 이어하기 복구 로직 (A/B 선택창 삭제 & 전체 시트 검색)
         with st.expander("이전에 하던 설문 이어하기"):
-            resume_id = st.text_input("고유 참가자 번호 6자리를 입력하세요")
-            resume_type = st.radio("배정받으셨던 유형을 선택하세요", ["A형", "B형"], horizontal=True)
+            resume_id = st.text_input("고유 참가자 번호 6자리를 입력하세요").strip()
             
             if st.button("불러오기"):
                 try:
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-                    sh = conn.client._client.open_by_url(spreadsheet_url)
-                    existing_data = conn.read(worksheet=resume_type, ttl=0)
                     
-                    # 입력한 ID 검색
-                    existing_data['ID'] = existing_data['ID'].astype(str)
-                    match = existing_data[existing_data['ID'] == str(resume_id)]
+                    match = pd.DataFrame()
+                    found_type = ""
+                    
+                    # A형과 B형 시트를 모두 뒤져서 ID를 자동으로 찾아냅니다
+                    for s_type in ["A형", "B형"]:
+                        try:
+                            existing_data = conn.read(worksheet=s_type, ttl=0)
+                            if not existing_data.empty and "ID" in existing_data.columns:
+                                existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+                                temp_match = existing_data[existing_data['ID_clean'] == resume_id]
+                                if not temp_match.empty:
+                                    match = temp_match
+                                    found_type = s_type
+                                    break
+                        except Exception:
+                            continue
                     
                     if not match.empty:
                         user_record = match.iloc[-1].to_dict() # 가장 최신 기록
@@ -192,7 +216,7 @@ if st.session_state.page == 'intro':
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
                         # 유저 데이터 및 이전 응답 복구 (기본 정보 컬럼 제외)
-                        exclude_keys = ['ID', '설문유형', '현재페이지', 'p1_idx', 'p2_idx']
+                        exclude_keys = ['ID', '설문유형', '현재페이지', 'p1_idx', 'p2_idx', 'ID_clean']
                         for k, v in user_record.items():
                             if k not in exclude_keys and pd.notna(v):
                                 if k in ["성별", "연령", "학력", "분야", "의류지출"]:
@@ -202,18 +226,18 @@ if st.session_state.page == 'intro':
                                     # 문항 값도 세션으로 복구 (슬라이더 오류 방지)
                                     st.session_state[k] = int(v) 
 
-                        st.success("데이터를 성공적으로 불러왔습니다!")
+                        st.success(f"데이터를 성공적으로 불러왔습니다! ({found_type} 배정)")
                         import time; time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("해당 번호의 기록을 찾을 수 없습니다.")
+                        st.error("해당 번호의 기록을 찾을 수 없습니다. 번호를 다시 확인해주세요.")
                 except Exception as e:
-                    st.error("불러오는 중 오류가 발생했습니다. 시트 설정을 확인하세요.")
-
+                    st.error("불러오는 중 오류가 발생했습니다. 구글 시트 연결을 확인하세요.")
 
 # --- 3. [2페이지] 인구통계학적 설문 ---
 elif st.session_state.page == 'demographics':
     prevent_refresh_script()
+    components.html(auto_scroll_top_script("demographics"), height=0)
     st.title("인구통계학적 정보")
     st.write("---")
     gender = st.radio("귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
@@ -228,13 +252,13 @@ elif st.session_state.page == 'demographics':
         else:
             st.session_state.user_data.update({"성별": gender, "연령": age, "학력": edu, "분야": major, "의류지출": spending})
             st.session_state.page = 'part1_intro'
-            with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 자동 저장
+            with st.spinner("저장 중..."): save_progress_to_sheet()
             st.rerun()
 
 # --- [새로 추가된 페이지] 파트 1 중간 안내 ---
 elif st.session_state.page == 'part1_intro':
     prevent_refresh_script()
-    components.html(auto_scroll_top_script(), height=0)
+    components.html(auto_scroll_top_script("part1_intro"), height=0)
     st.title("📝 [파트 1] 감성 평가 안내")
     st.write("---")
     st.info("""
@@ -254,7 +278,9 @@ elif st.session_state.page == 'part1_survey':
     prevent_refresh_script()
     idx = st.session_state.p1_idx
     apply_common_css()
-    components.html(auto_scroll_top_script(), height=0)
+    
+    # 🌟 스크롤이 무조건 올라가도록 인덱스(idx) 삽입
+    components.html(auto_scroll_top_script(f"p1_{idx}"), height=0)
     
     total_p1 = len(st.session_state.p1_order)
     current_img_file = st.session_state.p1_order[idx]
@@ -306,14 +332,14 @@ elif st.session_state.page == 'part1_survey':
         if st.session_state.p1_idx >= total_p1:
             st.session_state.page = 'part2_intro'
             
-        with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 실시간 자동 저장
+        with st.spinner("저장 중..."): save_progress_to_sheet()
         import time; time.sleep(0.15)
         st.rerun()
 
 # --- 5. [4페이지] 파트 2 중간 안내 ---
 elif st.session_state.page == 'part2_intro':
     prevent_refresh_script()
-    components.html(auto_scroll_top_script(), height=0)
+    components.html(auto_scroll_top_script("part2_intro"), height=0)
     st.title("🎉 파트 1 완료!")
     st.success("단일 이미지 감성 평가가 모두 끝났습니다. 수고하셨습니다!")
     st.write("---")
@@ -334,7 +360,9 @@ elif st.session_state.page == 'part2_survey':
     prevent_refresh_script()
     idx = st.session_state.p2_idx
     apply_common_css()
-    components.html(auto_scroll_top_script(), height=0)
+    
+    # 🌟 스크롤이 무조건 올라가도록 인덱스(idx) 삽입
+    components.html(auto_scroll_top_script(f"p2_{idx}"), height=0)
     
     total_p2 = len(st.session_state.p2_order)
     current_img_file = st.session_state.p2_order[idx]
@@ -390,7 +418,7 @@ elif st.session_state.page == 'part2_survey':
         if st.button("다음 이미지 쌍으로 ->", key="next_pair_btn", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
-            with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 실시간 자동 저장
+            with st.spinner("저장 중..."): save_progress_to_sheet()
             import time; time.sleep(0.15)
             st.rerun()
     else:
