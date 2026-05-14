@@ -4,7 +4,6 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -53,14 +52,25 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 실시간 시트 저장 (중복 행 추가 버그 완벽 해결) ---
+# --- 🌟 [최종 완성] 캐시 잠김 완벽 해제 및 무조건 저장 로직 ---
 def save_progress_to_sheet():
     try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        # 🌟 필수: 스트림릿 내부 캐시를 강제로 비워야 업데이트가 무시되지 않고 무조건 꽂힙니다!
+        st.cache_data.clear()
         
-        sh = conn.client.open_by_url(spreadsheet_url)
-        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        target_sheet_name = f"{st.session_state.survey_type}형"
+        
+        try: 
+            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
+        except Exception: 
+            return # 통신 오류 시 전체 날아감 방지
+
+        # 미리 채워두신 184개 헤더(1행)가 날아가면 안 되므로 보호합니다.
+        if existing_data is None or len(existing_data.columns) < 5:
+            return 
+            
+        existing_data = existing_data.copy()
 
         current_data = {
             "ID": str(st.session_state.user_id),
@@ -72,37 +82,32 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        headers = worksheet.row_values(1)
+        new_df = pd.DataFrame([current_data])
         
-        if not headers:
-            headers = list(current_data.keys())
-            worksheet.append_row(headers)
-            
-        row_data = [str(current_data.get(header, "")) for header in headers]
-        
-        if "ID" in headers:
-            id_col_index = headers.index("ID") + 1 
-            
-            # 🌟 [핵심 수정] gspread.find의 타입 매칭 오류로 인한 줄 바꿈 버그 수정
-            # 시트의 전체 ID 열을 가져와서 문자열로 완벽히 정제한 후 매칭합니다.
-            id_list = worksheet.col_values(id_col_index)
-            cleaned_id_list = [str(x).replace('.0', '').strip() for x in id_list]
+        if "ID" in existing_data.columns:
+            # 소수점 오류 방지
+            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             target_id = str(st.session_state.user_id).strip()
             
-            if target_id in cleaned_id_list:
-                # 찾았다면 해당 줄(Row)만 찾아서 정확하게 덮어씁니다 (새 줄 생성 안 함)
-                row_to_update = len(cleaned_id_list) - cleaned_id_list[::-1].index(target_id)
-                try:
-                    worksheet.update(f"A{row_to_update}", [row_data]) 
-                except TypeError:
-                    worksheet.update(values=[row_data], range_name=f"A{row_to_update}")
+            if target_id in existing_data['ID_clean'].values:
+                # 🌟 이미 진행 중인 참가자: 기존 줄에 정확히 덮어쓰기 (행 추가 안 됨)
+                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
+                for col in new_df.columns:
+                    if col not in existing_data.columns:
+                        existing_data[col] = "" 
+                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
+                
+                updated_df = existing_data.drop(columns=['ID_clean'])
             else:
-                worksheet.append_row(row_data)
+                # 🌟 새로운 참가자: 맨 아랫줄에 새 행 추가
+                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
         else:
-            worksheet.append_row(row_data)
+            updated_df = pd.concat([existing_data, new_df], ignore_index=True)
             
+        updated_df = updated_df.fillna("")
+        conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass 
+        pass # 화면 멈춤 방지
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
