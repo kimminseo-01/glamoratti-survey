@@ -49,16 +49,20 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 실시간 시트 저장 (소수점 제거 및 완벽한 덮어쓰기 로직 적용) ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (캐시 꼬임 현상 완벽 해결) ---
 def save_progress_to_sheet():
     try:
+        st.cache_data.clear() # 🌟 수정포인트 1: 스트림릿 내부 캐시를 강제로 비워 데이터 꼬임/건너뜀 방지
         conn = st.connection("gsheets", type=GSheetsConnection)
         spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         sh = conn.client._client.open_by_url(spreadsheet_url)
         target_sheet_name = f"{st.session_state.survey_type}형"
         
-        try: existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
-        except Exception: existing_data = pd.DataFrame()
+        try: 
+            # 🌟 수정포인트 2: .copy()를 추가해 캐시된 데이터를 직접 수정할 때 나는 에러(Mutation 에러)를 원천 차단
+            existing_data = conn.read(worksheet=target_sheet_name, ttl=0).copy()
+        except Exception: 
+            existing_data = pd.DataFrame()
 
         current_data = {
             "ID": str(st.session_state.user_id),
@@ -107,7 +111,7 @@ def prevent_refresh_script():
     </script>
     """, height=0)
 
-# --- 🌟 [수정됨] 자동 스크롤 기능 (고유 식별자 추가로 무조건 실행 보장) ---
+# --- 자동 스크롤 기능 ---
 def auto_scroll_top_script(key=""):
     return f"""
     <div id="scroll_trigger_{key}"></div>
@@ -179,7 +183,6 @@ if st.session_state.page == 'intro':
             st.rerun()
             
     with col2:
-        # 🌟 [수정됨] 이어하기 복구 로직 (A/B 선택창 삭제 & 전체 시트 검색)
         with st.expander("이전에 하던 설문 이어하기"):
             resume_id = st.text_input("고유 참가자 번호 6자리를 입력하세요").strip()
             
@@ -191,7 +194,6 @@ if st.session_state.page == 'intro':
                     match = pd.DataFrame()
                     found_type = ""
                     
-                    # A형과 B형 시트를 모두 뒤져서 ID를 자동으로 찾아냅니다
                     for s_type in ["A형", "B형"]:
                         try:
                             existing_data = conn.read(worksheet=s_type, ttl=0)
@@ -206,16 +208,14 @@ if st.session_state.page == 'intro':
                             continue
                     
                     if not match.empty:
-                        user_record = match.iloc[-1].to_dict() # 가장 최신 기록
+                        user_record = match.iloc[-1].to_dict()
                         
-                        # 세션 복구
                         st.session_state.user_id = user_record.get('ID')
                         st.session_state.survey_type = user_record.get('설문유형')
                         st.session_state.page = user_record.get('현재페이지')
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
-                        # 유저 데이터 및 이전 응답 복구 (기본 정보 컬럼 제외)
                         exclude_keys = ['ID', '설문유형', '현재페이지', 'p1_idx', 'p2_idx', 'ID_clean']
                         for k, v in user_record.items():
                             if k not in exclude_keys and pd.notna(v):
@@ -223,7 +223,6 @@ if st.session_state.page == 'intro':
                                     st.session_state.user_data[k] = v
                                 else:
                                     st.session_state.all_responses[k] = v
-                                    # 문항 값도 세션으로 복구 (슬라이더 오류 방지)
                                     st.session_state[k] = int(v) 
 
                         st.success(f"데이터를 성공적으로 불러왔습니다! ({found_type} 배정)")
@@ -279,7 +278,6 @@ elif st.session_state.page == 'part1_survey':
     idx = st.session_state.p1_idx
     apply_common_css()
     
-    # 🌟 스크롤이 무조건 올라가도록 인덱스(idx) 삽입
     components.html(auto_scroll_top_script(f"p1_{idx}"), height=0)
     
     total_p1 = len(st.session_state.p1_order)
@@ -361,7 +359,6 @@ elif st.session_state.page == 'part2_survey':
     idx = st.session_state.p2_idx
     apply_common_css()
     
-    # 🌟 스크롤이 무조건 올라가도록 인덱스(idx) 삽입
     components.html(auto_scroll_top_script(f"p2_{idx}"), height=0)
     
     total_p2 = len(st.session_state.p2_order)
