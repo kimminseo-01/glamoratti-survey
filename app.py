@@ -56,8 +56,8 @@ def save_progress_to_sheet():
         conn = st.connection("gsheets", type=GSheetsConnection)
         spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         
-        # 🌟 스트림릿 내부 연결에서 gspread 원본 클라이언트를 꺼내 직접 제어합니다.
-        sh = conn.client._client.open_by_url(spreadsheet_url)
+        # 🌟 _client 대신 client를 직접 호출하여 오류 해결
+        sh = conn.client.open_by_url(spreadsheet_url)
         worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
 
         current_data = {
@@ -72,27 +72,31 @@ def save_progress_to_sheet():
         
         # 1. 엑셀의 첫 번째 행(컬럼명)만 아주 가볍고 빠르게 읽어옵니다.
         headers = worksheet.row_values(1)
-        if not headers or "ID" not in headers:
-            return # 헤더 세팅이 안 되어 있으면 안전을 위해 중단
+        
+        # 🌟 [자동 복구 로직] 구글 시트가 아예 텅 빈 백지라면, 파이썬이 알아서 헤더를 1행에 써줍니다!
+        if not headers:
+            headers = list(current_data.keys())
+            worksheet.append_row(headers)
             
         # 2. 헤더 순서에 맞춰 엑셀 1줄(Row)에 들어갈 데이터 리스트를 만듭니다.
         row_data = [str(current_data.get(header, "")) for header in headers]
         
         # 3. ID가 몇 번째 컬럼에 있는지 파악합니다. (gspread는 1번부터 시작)
-        id_col_index = headers.index("ID") + 1 
-        
-        try:
-            # 4. 내 ID가 이미 있는지 딱 1개의 셀만 빠르게 검색합니다.
-            cell = worksheet.find(str(st.session_state.user_id), in_column=id_col_index)
+        if "ID" in headers:
+            id_col_index = headers.index("ID") + 1 
             
-            # 찾았다면 전체 시트를 건드리지 않고 '해당 줄(Row)'만 덮어씁니다. (gspread 버전 호환성 처리)
             try:
-                worksheet.update(f"A{cell.row}", [row_data]) 
-            except TypeError:
-                worksheet.update(values=[row_data], range_name=f"A{cell.row}")
+                # 4. 내 ID가 이미 있는지 딱 1개의 셀만 빠르게 검색합니다.
+                cell = worksheet.find(str(st.session_state.user_id), in_column=id_col_index)
                 
-        except gspread.exceptions.CellNotFound:
-            # 5. 질문자님의 완벽한 해결책! ID가 없다면 빈 줄에 안전하게 덧붙입니다 (Append)
+                # 찾았다면 전체 시트를 건드리지 않고 '해당 줄(Row)'만 덮어씁니다. (최신 버전 호환 문법)
+                worksheet.update(range_name=f"A{cell.row}", values=[row_data])
+                    
+            except gspread.exceptions.CellNotFound:
+                # 5. ID가 없다면 빈 줄에 안전하게 덧붙입니다 (Append)
+                worksheet.append_row(row_data)
+        else:
+            # 혹시라도 ID 컬럼이 지워졌다면 그냥 무조건 밑에 덧붙입니다.
             worksheet.append_row(row_data)
             
     except Exception as e:
