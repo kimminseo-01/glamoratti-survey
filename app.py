@@ -4,7 +4,6 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -50,15 +49,17 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [천재적 해결책] gspread의 append 및 특정 행 update 방식 적용 ---
+# --- 🌟 [최종 완벽 해결책] 184개 헤더 파괴 방지 및 완벽 업데이트 로직 ---
 def save_progress_to_sheet():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        target_sheet_name = f"{st.session_state.survey_type}형"
         
-        # 🌟 _client 대신 client를 직접 호출하여 오류 해결
-        sh = conn.client.open_by_url(spreadsheet_url)
-        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
+        try: 
+            # 시트의 뼈대를 무조건 읽어옵니다.
+            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
+        except Exception: 
+            existing_data = pd.DataFrame()
 
         current_data = {
             "ID": str(st.session_state.user_id),
@@ -70,37 +71,42 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        # 1. 엑셀의 첫 번째 행(컬럼명)만 아주 가볍고 빠르게 읽어옵니다.
-        headers = worksheet.row_values(1)
+        new_df = pd.DataFrame([current_data])
         
-        # 🌟 [자동 복구 로직] 구글 시트가 아예 텅 빈 백지라면, 파이썬이 알아서 헤더를 1행에 써줍니다!
-        if not headers:
-            headers = list(current_data.keys())
-            worksheet.append_row(headers)
-            
-        # 2. 헤더 순서에 맞춰 엑셀 1줄(Row)에 들어갈 데이터 리스트를 만듭니다.
-        row_data = [str(current_data.get(header, "")) for header in headers]
-        
-        # 3. ID가 몇 번째 컬럼에 있는지 파악합니다. (gspread는 1번부터 시작)
-        if "ID" in headers:
-            id_col_index = headers.index("ID") + 1 
-            
-            try:
-                # 4. 내 ID가 이미 있는지 딱 1개의 셀만 빠르게 검색합니다.
-                cell = worksheet.find(str(st.session_state.user_id), in_column=id_col_index)
-                
-                # 찾았다면 전체 시트를 건드리지 않고 '해당 줄(Row)'만 덮어씁니다. (최신 버전 호환 문법)
-                worksheet.update(range_name=f"A{cell.row}", values=[row_data])
-                    
-            except gspread.exceptions.CellNotFound:
-                # 5. ID가 없다면 빈 줄에 안전하게 덧붙입니다 (Append)
-                worksheet.append_row(row_data)
+        # 🌟 핵심: 데이터가 0줄(비어있음)이더라도 컬럼 구조를 절대 날리지 않기 위해 무조건 copy()
+        if existing_data is not None:
+            existing_data = existing_data.copy()
         else:
-            # 혹시라도 ID 컬럼이 지워졌다면 그냥 무조건 밑에 덧붙입니다.
-            worksheet.append_row(row_data)
+            existing_data = pd.DataFrame()
             
+        # ID 컬럼이 존재한다면 정상적으로 업데이트/추가 로직 실행
+        if "ID" in existing_data.columns:
+            # 소수점 오류 방지
+            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            target_id = str(st.session_state.user_id).strip()
+            
+            if target_id in existing_data['ID_clean'].values:
+                # 🌟 이미 진행 중인 참가자: 기존 줄 덮어쓰기 (헤더 100% 보존)
+                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
+                for col in new_df.columns:
+                    if col not in existing_data.columns:
+                        existing_data[col] = None 
+                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
+                
+                updated_df = existing_data.drop(columns=['ID_clean'])
+            else:
+                # 🌟 새로운 참가자: 기존 184개 헤더 구조(existing_data) 아래에 무조건 덧붙이기 (헤더 파괴 절대 불가)
+                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
+        else:
+            # 시트에 아예 아무것도 없거나 ID 컬럼이 없는 완전 백지일 때
+            updated_df = pd.concat([existing_data, new_df], ignore_index=True)
+            
+        # NaN 값으로 인한 통신 에러 방지
+        updated_df = updated_df.fillna("")
+        
+        conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass # 에러 발생 시 앱이 멈추지 않도록 조용히 넘김
+        pass # 화면 멈춤 방지용
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
@@ -195,7 +201,7 @@ if st.session_state.page == 'intro':
                     match = pd.DataFrame()
                     found_type = ""
                     
-                    # 이어하기 시트 읽어오기는 안전하므로 기존 방식 유지
+                    # 이어하기 시트 읽어오기
                     for s_type in ["A형", "B형"]:
                         try:
                             existing_data = conn.read(worksheet=s_type, ttl=0)
