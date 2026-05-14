@@ -4,6 +4,7 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -22,7 +23,7 @@ if 'p2_idx' not in st.session_state:
 if 'user_id' not in st.session_state:
     st.session_state.user_id = str(random.randint(100000, 999999)) # 6자리 무작위 숫자
 
-# 🌟 [핵심 수정] 참가자 번호를 시드(Seed)로 사용하여 항상 동일한 랜덤 순서를 보장합니다!
+# 🌟 참가자 번호를 시드(Seed)로 사용하여 항상 동일한 랜덤 순서를 보장
 rng = random.Random(int(st.session_state.user_id))
 
 # 🌟 A/B 테스트 (시드 기반 고정)
@@ -34,7 +35,7 @@ if 'p1_order' not in st.session_state:
         p1_list = [f"S{i}.png" for i in range(1, 13)] 
     else:
         p1_list = [f"S{i}.png" for i in range(13, 25)] 
-    rng.shuffle(p1_list) # 🌟 시드 기반 셔플
+    rng.shuffle(p1_list) 
     st.session_state.p1_order = p1_list
 
 if 'p2_order' not in st.session_state:
@@ -42,7 +43,7 @@ if 'p2_order' not in st.session_state:
         p2_list = [f"pair{i}.png" for i in range(1, 7)] 
     else:
         p2_list = [f"pair{i}.png" for i in range(7, 13)] 
-    rng.shuffle(p2_list) # 🌟 시드 기반 셔플
+    rng.shuffle(p2_list) 
     st.session_state.p2_order = p2_list
 
 def get_image_base64(path):
@@ -52,28 +53,20 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [최종 완성] 캐시 잠김 완벽 해제 및 무조건 저장 로직 ---
+# --- 🌟 실시간 시트 저장 (중복 행 추가 버그 완벽 해결) ---
 def save_progress_to_sheet():
     try:
-        # 🌟 필수: 스트림릿 내부 캐시를 강제로 비워야 업데이트가 무시되지 않고 무조건 꽂힙니다!
-        st.cache_data.clear()
-        
         conn = st.connection("gsheets", type=GSheetsConnection)
-        target_sheet_name = f"{st.session_state.survey_type}형"
+        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         
-        try: 
-            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
-        except Exception: 
-            return # 통신 오류 시 전체 날아감 방지
+        sh = conn.client.open_by_url(spreadsheet_url)
+        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
 
-        # 미리 채워두신 184개 헤더(1행)가 날아가면 안 되므로 보호합니다.
-        if existing_data is None or len(existing_data.columns) < 5:
-            return 
-            
-        existing_data = existing_data.copy()
+        # 🌟 ID 소수점 에러 원천 차단
+        clean_user_id = str(st.session_state.user_id).replace('.0', '').strip()
 
         current_data = {
-            "ID": str(st.session_state.user_id),
+            "ID": clean_user_id,
             "설문유형": st.session_state.survey_type,
             "현재페이지": st.session_state.page,
             "p1_idx": st.session_state.p1_idx,
@@ -82,32 +75,35 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        new_df = pd.DataFrame([current_data])
+        headers = worksheet.row_values(1)
         
-        if "ID" in existing_data.columns:
-            # 소수점 오류 방지
-            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            target_id = str(st.session_state.user_id).strip()
+        if not headers:
+            headers = list(current_data.keys())
+            worksheet.append_row(headers)
             
-            if target_id in existing_data['ID_clean'].values:
-                # 🌟 이미 진행 중인 참가자: 기존 줄에 정확히 덮어쓰기 (행 추가 안 됨)
-                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
-                for col in new_df.columns:
-                    if col not in existing_data.columns:
-                        existing_data[col] = "" 
-                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
-                
-                updated_df = existing_data.drop(columns=['ID_clean'])
+        row_data = [str(current_data.get(header, "")) for header in headers]
+        
+        if "ID" in headers:
+            id_col_index = headers.index("ID") + 1 
+            
+            # 시트의 전체 ID 열을 가져와서 문자열로 완벽히 정제한 후 매칭
+            id_list = worksheet.col_values(id_col_index)
+            cleaned_id_list = [str(x).replace('.0', '').strip() for x in id_list]
+            
+            if clean_user_id in cleaned_id_list:
+                # 찾았다면 해당 줄(Row)만 찾아서 정확하게 덮어씁니다 (새 줄 생성 안 함)
+                row_to_update = len(cleaned_id_list) - cleaned_id_list[::-1].index(clean_user_id)
+                try:
+                    worksheet.update(values=[row_data], range_name=f"A{row_to_update}")
+                except TypeError:
+                    worksheet.update(f"A{row_to_update}", [row_data]) 
             else:
-                # 🌟 새로운 참가자: 맨 아랫줄에 새 행 추가
-                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
+                worksheet.append_row(row_data)
         else:
-            updated_df = pd.concat([existing_data, new_df], ignore_index=True)
+            worksheet.append_row(row_data)
             
-        updated_df = updated_df.fillna("")
-        conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass # 화면 멈춤 방지
+        pass 
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
@@ -218,14 +214,17 @@ if st.session_state.page == 'intro':
                     if not match.empty:
                         user_record = match.iloc[-1].to_dict()
                         
-                        st.session_state.user_id = user_record.get('ID')
+                        # 🌟 문자열로 정제하여 ID 복구
+                        st.session_state.user_id = str(user_record.get('ID')).replace('.0', '').strip()
                         st.session_state.survey_type = user_record.get('설문유형')
                         st.session_state.page = user_record.get('현재페이지')
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
-                        # 🌟 [핵심 수정] 이어하기 시 복구된 ID로 자극물 순서 강제 복원 (순서 뒤섞임 완벽 차단)
+                        # 🌟 [핵심 수정] 이어하기 시 랜덤 함수의 '톱니바퀴' 상태를 완벽 동기화
                         resumed_rng = random.Random(int(st.session_state.user_id))
+                        _ = resumed_rng.choice(['A', 'B']) # 초기 배정 시 사용했던 1회차 랜덤 횟수를 똑같이 차감해줌
+                        
                         if st.session_state.survey_type == 'A':
                             resumed_p1 = [f"S{i}.png" for i in range(1, 13)]
                             resumed_p2 = [f"pair{i}.png" for i in range(1, 7)]
