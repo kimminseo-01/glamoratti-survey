@@ -4,6 +4,7 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -49,25 +50,15 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 실시간 시트 저장 (데이터 증발 및 통째로 날아감 완벽 해결) ---
+# --- 🌟 [천재적 해결책] gspread의 append 및 특정 행 update 방식 적용 ---
 def save_progress_to_sheet():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        sh = conn.client._client.open_by_url(spreadsheet_url)
-        target_sheet_name = f"{st.session_state.survey_type}형"
         
-        # 🌟 핵심 수정포인트: 통신 지연/오류 시 빈 시트로 착각하고 덮어씌우는 치명적인 버그 방지
-        try: 
-            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
-            if existing_data is None:
-                existing_data = pd.DataFrame()
-            else:
-                existing_data = existing_data.copy()
-        except Exception: 
-            # 구글 API 한도를 초과해 읽기에 실패했다면, 전체 시트가 날아가는 것을 막기 위해 
-            # 이번 클릭에 한해서만 자동저장을 안전하게 건너뜁니다. (어차피 다음 클릭 시 최신화 됨)
-            return 
+        # 🌟 스트림릿 내부 연결에서 gspread 원본 클라이언트를 꺼내 직접 제어합니다.
+        sh = conn.client._client.open_by_url(spreadsheet_url)
+        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
 
         current_data = {
             "ID": str(st.session_state.user_id),
@@ -79,31 +70,33 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        new_df = pd.DataFrame([current_data])
+        # 1. 엑셀의 첫 번째 행(컬럼명)만 아주 가볍고 빠르게 읽어옵니다.
+        headers = worksheet.row_values(1)
+        if not headers or "ID" not in headers:
+            return # 헤더 세팅이 안 되어 있으면 안전을 위해 중단
+            
+        # 2. 헤더 순서에 맞춰 엑셀 1줄(Row)에 들어갈 데이터 리스트를 만듭니다.
+        row_data = [str(current_data.get(header, "")) for header in headers]
         
-        if not existing_data.empty and "ID" in existing_data.columns:
-            # 구글 시트에서 숫자가 소수점(.0)으로 읽히는 현상 완벽 방지
-            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            target_id = str(st.session_state.user_id).strip()
+        # 3. ID가 몇 번째 컬럼에 있는지 파악합니다. (gspread는 1번부터 시작)
+        id_col_index = headers.index("ID") + 1 
+        
+        try:
+            # 4. 내 ID가 이미 있는지 딱 1개의 셀만 빠르게 검색합니다.
+            cell = worksheet.find(str(st.session_state.user_id), in_column=id_col_index)
             
-            if target_id in existing_data['ID_clean'].values:
-                # 밑으로 계속 쌓이지 않도록 기존 위치의 행만 업데이트(덮어쓰기)
-                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
-                for col in new_df.columns:
-                    if col not in existing_data.columns:
-                        existing_data[col] = None # 없는 열이면 생성
-                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
+            # 찾았다면 전체 시트를 건드리지 않고 '해당 줄(Row)'만 덮어씁니다. (gspread 버전 호환성 처리)
+            try:
+                worksheet.update(f"A{cell.row}", [row_data]) 
+            except TypeError:
+                worksheet.update(values=[row_data], range_name=f"A{cell.row}")
                 
-                updated_df = existing_data.drop(columns=['ID_clean'])
-            else:
-                # 새 응답자일 경우에만 맨 아래에 추가
-                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
-        else:
-            updated_df = pd.concat([existing_data, new_df], ignore_index=True) if not existing_data.empty else new_df
+        except gspread.exceptions.CellNotFound:
+            # 5. 질문자님의 완벽한 해결책! ID가 없다면 빈 줄에 안전하게 덧붙입니다 (Append)
+            worksheet.append_row(row_data)
             
-        conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass
+        pass # 에러 발생 시 앱이 멈추지 않도록 조용히 넘김
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
@@ -194,11 +187,11 @@ if st.session_state.page == 'intro':
             if st.button("불러오기"):
                 try:
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
                     
                     match = pd.DataFrame()
                     found_type = ""
                     
+                    # 이어하기 시트 읽어오기는 안전하므로 기존 방식 유지
                     for s_type in ["A형", "B형"]:
                         try:
                             existing_data = conn.read(worksheet=s_type, ttl=0)
