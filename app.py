@@ -18,19 +18,27 @@ if 'p1_idx' not in st.session_state:
 if 'p2_idx' not in st.session_state:
     st.session_state.p2_idx = 0
 
-# 🌟 고유 ID 발급 (이어하기 용도)
+# 🌟 고유 ID (이어하기 번호)
 if 'user_id' not in st.session_state:
     st.session_state.user_id = str(random.randint(100000, 999999)) # 6자리 무작위 숫자
 
-# 파트 1 (단일 이미지 S1~S24) 랜덤 리스트
+# 🌟 A/B 테스트
+if 'survey_type' not in st.session_state:
+    st.session_state.survey_type = random.choice(['A', 'B']) 
+
 if 'p1_order' not in st.session_state:
-    p1_list = [f"S{i}.png" for i in range(1, 25)] 
+    if st.session_state.survey_type == 'A':
+        p1_list = [f"S{i}.png" for i in range(1, 13)] 
+    else:
+        p1_list = [f"S{i}.png" for i in range(13, 25)] 
     random.shuffle(p1_list)
     st.session_state.p1_order = p1_list
 
-# 파트 2 (이미지 쌍 pair) 랜덤 리스트
 if 'p2_order' not in st.session_state:
-    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
+    if st.session_state.survey_type == 'A':
+        p2_list = [f"pair{i}.png" for i in range(1, 7)] 
+    else:
+        p2_list = [f"pair{i}.png" for i in range(7, 13)] 
     random.shuffle(p2_list)
     st.session_state.p2_order = p2_list
 
@@ -73,9 +81,10 @@ def save_progress_to_sheet():
         updated_df = pd.concat([existing_data, new_df], ignore_index=True)
         conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass # 시트 오류 시 사용자가 불편하지 않게 조용히 넘어감
+        # 시트 오류 시 멈추지 않도록 예외 처리
+        pass
 
-# --- 🌟 새로고침/창 닫기 방지 스크립트 ---
+# --- 새로고침 방지 ---
 def prevent_refresh_script():
     components.html("""
     <script>
@@ -86,7 +95,7 @@ def prevent_refresh_script():
     </script>
     """, height=0)
 
-# --- 🌟 자동 스크롤 최종 안정화 버전 스크립트 ---
+# --- 자동 스크롤 ---
 def auto_scroll_top_script():
     return """
     <script>
@@ -111,55 +120,24 @@ def auto_scroll_top_script():
     </script>
     """
 
-# --- 공통 CSS (슬라이더 스타일 적용) ---
 def apply_common_css():
     st.markdown("""
         <style>
         header {visibility: hidden;}
-        .sticky-image { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            background-color: white; 
-            z-index: 1000; 
-            padding: 8px 0; 
-            border-bottom: 2px solid #ddd; 
-            text-align: center; 
-        }
-        .sticky-image img {
-            max-height: 1200px; 
-            width: auto;
-            max-width: 100%;
-            object-fit: contain;
-        }
+        .sticky-image { position: fixed; top: 0; left: 0; width: 100%; background-color: white; z-index: 1000; padding: 8px 0; border-bottom: 2px solid #ddd; text-align: center; }
+        .sticky-image img { max-height: 1200px; width: auto; max-width: 100%; object-fit: contain; }
         .spacer { margin-top: 300px; }
         .section-header { background-color: #f0f2f6; padding: 10px; border-radius: 5px; margin-top: 20px; }
         div[data-testid="stButton"] button { height: 40px; }
-        
-        /* ===== 슬라이더 스타일 수정 ===== */
-        /* 전체 슬라이더 트랙 */
-        .stSlider [data-baseweb="slider"] > div > div {
-            background: #D9D9D9 !important;
-        }
-        /* 색 채워지는 부분 제거 */
-        .stSlider [data-baseweb="slider"] > div > div > div {
-            background: #D9D9D9 !important;
-        }
-        /* 동그라미 손잡이 */
-        .stSlider [role="slider"] {
-            background-color: white !important;
-            border: 2px solid #999 !important;
-            box-shadow: none !important;
-        }
-        /* 숫자 표시 숨기기 */
-        .stSlider div[data-baseweb="slider"] + div {
-            display: none;
-        }
+        .stSlider [data-baseweb="slider"] > div > div { background: #D9D9D9 !important; }
+        .stSlider [data-baseweb="slider"] > div > div > div { background: #D9D9D9 !important; }
+        .stSlider [role="slider"] { background-color: white !important; border: 2px solid #999 !important; box-shadow: none !important; }
+        .stSlider div[data-baseweb="slider"] + div { display: none; }
         </style>
     """, unsafe_allow_html=True)
 
-# --- 2. [1페이지] 인트로 (이어하기 로직 추가) ---
+
+# --- 2. [1페이지] 인트로 및 이어하기 로직 ---
 if st.session_state.page == 'intro':
     st.title("1980년대 패션의 재해석 수준에 따른 Glamoratti 아우터의 감성 인지 조사")
     st.write("---")
@@ -174,12 +152,12 @@ if st.session_state.page == 'intro':
     - 설문조사 참여에 동의한다면 설문 시작하기 버튼을 눌러 설문을 시작해주십시오.
     
     🔑 **귀하의 고유 참가자 번호는 [{st.session_state.user_id}] 입니다.**
-    (중간에 오류로 창이 닫히더라도, 이 번호를 통해 이어서 진행하실 수 있으니 메모해 두시길 권장합니다.)
+    (중간에 설문이 중단되더라도, 해당 번호로 이어서 진행하실 수 있으니 복사해 두시길 권장합니다.)
     """)
-    st.warning("⚠️ 본 설문조사는 만 19세 이상 한국 거주 여성을 대상으로 하고 있습니다.")
-    st.warning("⚠️ 중간에 브라우저를 새로고침하면 응답이 초기화되니 주의해 주세요.")
-    st.warning("⚠️ 모든 문항에 대한 응답을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
     
+    st.warning("⚠️ 본 설문조사는 만 19세 이상 한국 거주 여성을 대상으로 하고 있습니다.")
+    st.warning("⚠️ 중간에 브라우저를 새로고침하면 설문이 중단되니 주의해 주세요.")
+    st.warning("⚠️ 모든 문항에 대한 응답을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
     col1, col2 = st.columns(2)
     with col1:
         if st.button("처음부터 시작하기", use_container_width=True):
@@ -187,6 +165,7 @@ if st.session_state.page == 'intro':
             st.rerun()
             
     with col2:
+        # 🌟 이어하기 복구 로직
         with st.expander("이전에 하던 설문 이어하기"):
             resume_id = st.text_input("고유 참가자 번호 6자리를 입력하세요")
             resume_type = st.radio("배정받으셨던 유형을 선택하세요", ["A형", "B형"], horizontal=True)
@@ -198,18 +177,21 @@ if st.session_state.page == 'intro':
                     sh = conn.client._client.open_by_url(spreadsheet_url)
                     existing_data = conn.read(worksheet=resume_type, ttl=0)
                     
+                    # 입력한 ID 검색
                     existing_data['ID'] = existing_data['ID'].astype(str)
                     match = existing_data[existing_data['ID'] == str(resume_id)]
                     
                     if not match.empty:
-                        user_record = match.iloc[-1].to_dict()
+                        user_record = match.iloc[-1].to_dict() # 가장 최신 기록
                         
+                        # 세션 복구
                         st.session_state.user_id = user_record.get('ID')
                         st.session_state.survey_type = user_record.get('설문유형')
                         st.session_state.page = user_record.get('현재페이지')
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
+                        # 유저 데이터 및 이전 응답 복구 (기본 정보 컬럼 제외)
                         exclude_keys = ['ID', '설문유형', '현재페이지', 'p1_idx', 'p2_idx']
                         for k, v in user_record.items():
                             if k not in exclude_keys and pd.notna(v):
@@ -217,6 +199,7 @@ if st.session_state.page == 'intro':
                                     st.session_state.user_data[k] = v
                                 else:
                                     st.session_state.all_responses[k] = v
+                                    # 문항 값도 세션으로 복구 (슬라이더 오류 방지)
                                     st.session_state[k] = int(v) 
 
                         st.success("데이터를 성공적으로 불러왔습니다!")
@@ -225,7 +208,8 @@ if st.session_state.page == 'intro':
                     else:
                         st.error("해당 번호의 기록을 찾을 수 없습니다.")
                 except Exception as e:
-                    st.error("불러오는 중 오류가 발생했습니다.")
+                    st.error("불러오는 중 오류가 발생했습니다. 시트 설정을 확인하세요.")
+
 
 # --- 3. [2페이지] 인구통계학적 설문 ---
 elif st.session_state.page == 'demographics':
@@ -244,7 +228,7 @@ elif st.session_state.page == 'demographics':
         else:
             st.session_state.user_data.update({"성별": gender, "연령": age, "학력": edu, "분야": major, "의류지출": spending})
             st.session_state.page = 'part1_intro'
-            with st.spinner("안전하게 저장 중..."): save_progress_to_sheet() # 🌟 자동 저장
+            with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 자동 저장
             st.rerun()
 
 # --- [새로 추가된 페이지] 파트 1 중간 안내 ---
@@ -291,28 +275,12 @@ elif st.session_state.page == 'part1_survey':
         with center_col:
             st.markdown(
                 f"""
-                <div style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:15px;
-                    font-weight:500;
-                    margin-bottom:-10px;
-                ">
-                    <span>{l}</span>
-                    <span>{r}</span>
+                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;">
+                    <span>{l}</span><span>{r}</span>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """, unsafe_allow_html=True
             )
-            score = st.slider(
-                "",
-                min_value=1,
-                max_value=7,
-                value=st.session_state.get(key_name, 4), # 🌟 복원 데이터 반영
-                step=1,
-                key=key_name,
-                label_visibility="collapsed"
-            )
+            score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
@@ -323,31 +291,23 @@ elif st.session_state.page == 'part1_survey':
         const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
-            if (el) {
-                el.scrollTo({ top: 0, behavior: 'smooth' });
-                el.scrollTop = 0;
-            }
+            if (el) { el.scrollTo({ top: 0, behavior: 'smooth' }); el.scrollTop = 0; }
         });
-        window.parent.document.documentElement.scrollTop = 0;
-        window.parent.document.body.scrollTop = 0;
+        window.parent.document.documentElement.scrollTop = 0; window.parent.document.body.scrollTop = 0;
     }
     </script>
-    <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
-            ⬆️ 화면 맨 위로
-        </button>
-    </div>
+    <div style="margin-top:20px;"><button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button></div>
     """, height=80)
     
     if st.button("다음 이미지로 ->", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
+        
         if st.session_state.p1_idx >= total_p1:
             st.session_state.page = 'part2_intro'
             
-        with st.spinner("안전하게 저장 중..."): save_progress_to_sheet() # 🌟 자동 저장
-        import time
-        time.sleep(0.15)
+        with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 실시간 자동 저장
+        import time; time.sleep(0.15)
         st.rerun()
 
 # --- 5. [4페이지] 파트 2 중간 안내 ---
@@ -357,11 +317,9 @@ elif st.session_state.page == 'part2_intro':
     st.title("🎉 파트 1 완료!")
     st.success("단일 이미지 감성 평가가 모두 끝났습니다. 수고하셨습니다!")
     st.write("---")
-    
     st.subheader("📝 [파트 2] 비교 평가 안내")
     st.info("""
     지금부터는 **[파트 2] 비교 평가**가 시작됩니다.
-    
     - 지금부터는 1980년대 아우터 이미지(좌측)와 이를 재해석한 현대의 아우터 이미지(우측)가 쌍으로 제시됩니다.
     - 좌측 이미지와 비교하여 **우측 이미지**에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.
     - 자극물 제시 순서는 참여자별로 무작위화 합니다. 
@@ -393,34 +351,10 @@ elif st.session_state.page == 'part2_survey':
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
         l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_acc{i+1}"
-        
         center_col = st.columns([1,6,1])[1]
-        
         with center_col:
-            st.markdown(
-                f"""
-                <div style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:15px;
-                    font-weight:500;
-                    margin-bottom:-10px;
-                ">
-                    <span>{l}</span>
-                    <span>{r}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            score = st.slider(
-                "",
-                min_value=1,
-                max_value=7,
-                value=st.session_state.get(key_name, 4), # 🌟 복원 데이터 반영
-                step=1,
-                key=key_name,
-                label_visibility="collapsed"
-            )
+            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>{l}</span><span>{r}</span></div>', unsafe_allow_html=True)
+            score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
@@ -430,34 +364,10 @@ elif st.session_state.page == 'part2_survey':
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
         l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_re{i+1}"
-        
         center_col = st.columns([1,6,1])[1]
-        
         with center_col:
-            st.markdown(
-                f"""
-                <div style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:15px;
-                    font-weight:500;
-                    margin-bottom:-10px;
-                ">
-                    <span>{l}</span>
-                    <span>{r}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            score = st.slider(
-                "",
-                min_value=1,
-                max_value=7,
-                value=st.session_state.get(key_name, 4), # 🌟 복원 데이터 반영
-                step=1,
-                key=key_name,
-                label_visibility="collapsed"
-            )
+            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>{l}</span><span>{r}</span></div>', unsafe_allow_html=True)
+            score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
@@ -468,58 +378,25 @@ elif st.session_state.page == 'part2_survey':
         const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
         selectors.forEach(selector => {
             const el = window.parent.document.querySelector(selector);
-            if (el) {
-                el.scrollTo({ top: 0, behavior: 'smooth' });
-                el.scrollTop = 0;
-            }
+            if (el) { el.scrollTo({ top: 0, behavior: 'smooth' }); el.scrollTop = 0; }
         });
-        window.parent.document.documentElement.scrollTop = 0;
-        window.parent.document.body.scrollTop = 0;
+        window.parent.document.documentElement.scrollTop = 0; window.parent.document.body.scrollTop = 0;
     }
     </script>
-    <div style="margin-top:20px;">
-        <button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
-            ⬆️ 화면 맨 위로
-        </button>
-    </div>
+    <div style="margin-top:20px;"><button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button></div>
     """, height=80)
     
     if idx < total_p2 - 1:
         if st.button("다음 이미지 쌍으로 ->", key="next_pair_btn", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
-            
-            with st.spinner("안전하게 저장 중..."): save_progress_to_sheet() # 🌟 자동 저장
-            import time
-            time.sleep(0.15)
+            with st.spinner("저장 중..."): save_progress_to_sheet() # 🌟 실시간 자동 저장
+            import time; time.sleep(0.15)
             st.rerun()
     else:
         if st.button("✅ 모든 설문 완료 및 제출", key="submit_btn", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
-            st.session_state.page = 'final_complete' # 중복 제출 방지용 플래그
-            
-            # 🌟 최종 제출 (자동 저장 로직과 동일하게 중복행 덮어쓰기 적용됨)
-            final_data = {
-                "ID": st.session_state.user_id,
-                "설문유형": st.session_state.survey_type,
-                "현재페이지": "제출완료",
-                **st.session_state.user_data, 
-                **st.session_state.all_responses
-            }
-            
-            conn = st.connection("gsheets", type=GSheetsConnection)
-            target_sheet_name = f"{st.session_state.survey_type}형"
-            
-            try: existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
-            except Exception: existing_data = pd.DataFrame()
-            
-            if not existing_data.empty and "ID" in existing_data.columns:
-                existing_data['ID'] = existing_data['ID'].astype(str)
-                if str(st.session_state.user_id) in existing_data['ID'].values:
-                    existing_data = existing_data[existing_data['ID'] != str(st.session_state.user_id)]
-                    
-            updated_df = pd.concat([existing_data, pd.DataFrame([final_data])], ignore_index=True)
-            conn.update(worksheet=target_sheet_name, data=updated_df)
-            
+            st.session_state.page = "final"
+            with st.spinner("최종 제출 중..."): save_progress_to_sheet()
             st.success("성공적으로 제출되었습니다! 설문에 참여해주셔서 감사합니다!")
             st.balloons()
