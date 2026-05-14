@@ -4,6 +4,7 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -22,16 +23,19 @@ if 'p2_idx' not in st.session_state:
 if 'user_id' not in st.session_state:
     st.session_state.user_id = str(random.randint(100000, 999999)) # 6자리 무작위 숫자
 
-# 🌟 A/B 테스트
+# 🌟 [핵심 수정] 참가자 번호를 시드(Seed)로 사용하여 항상 동일한 랜덤 순서를 보장합니다!
+rng = random.Random(int(st.session_state.user_id))
+
+# 🌟 A/B 테스트 (시드 기반 고정)
 if 'survey_type' not in st.session_state:
-    st.session_state.survey_type = random.choice(['A', 'B']) 
+    st.session_state.survey_type = rng.choice(['A', 'B']) 
 
 if 'p1_order' not in st.session_state:
     if st.session_state.survey_type == 'A':
         p1_list = [f"S{i}.png" for i in range(1, 13)] 
     else:
         p1_list = [f"S{i}.png" for i in range(13, 25)] 
-    random.shuffle(p1_list)
+    rng.shuffle(p1_list) # 🌟 시드 기반 셔플
     st.session_state.p1_order = p1_list
 
 if 'p2_order' not in st.session_state:
@@ -39,7 +43,7 @@ if 'p2_order' not in st.session_state:
         p2_list = [f"pair{i}.png" for i in range(1, 7)] 
     else:
         p2_list = [f"pair{i}.png" for i in range(7, 13)] 
-    random.shuffle(p2_list)
+    rng.shuffle(p2_list) # 🌟 시드 기반 셔플
     st.session_state.p2_order = p2_list
 
 def get_image_base64(path):
@@ -49,17 +53,14 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [최종 완벽 해결책] 184개 헤더 파괴 방지 및 완벽 업데이트 로직 ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (중복 행 추가 버그 완벽 해결) ---
 def save_progress_to_sheet():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        target_sheet_name = f"{st.session_state.survey_type}형"
+        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         
-        try: 
-            # 시트의 뼈대를 무조건 읽어옵니다.
-            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
-        except Exception: 
-            existing_data = pd.DataFrame()
+        sh = conn.client.open_by_url(spreadsheet_url)
+        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
 
         current_data = {
             "ID": str(st.session_state.user_id),
@@ -71,42 +72,37 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        new_df = pd.DataFrame([current_data])
+        headers = worksheet.row_values(1)
         
-        # 🌟 핵심: 데이터가 0줄(비어있음)이더라도 컬럼 구조를 절대 날리지 않기 위해 무조건 copy()
-        if existing_data is not None:
-            existing_data = existing_data.copy()
-        else:
-            existing_data = pd.DataFrame()
+        if not headers:
+            headers = list(current_data.keys())
+            worksheet.append_row(headers)
             
-        # ID 컬럼이 존재한다면 정상적으로 업데이트/추가 로직 실행
-        if "ID" in existing_data.columns:
-            # 소수점 오류 방지
-            existing_data['ID_clean'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+        row_data = [str(current_data.get(header, "")) for header in headers]
+        
+        if "ID" in headers:
+            id_col_index = headers.index("ID") + 1 
+            
+            # 🌟 [핵심 수정] gspread.find의 타입 매칭 오류로 인한 줄 바꿈 버그 수정
+            # 시트의 전체 ID 열을 가져와서 문자열로 완벽히 정제한 후 매칭합니다.
+            id_list = worksheet.col_values(id_col_index)
+            cleaned_id_list = [str(x).replace('.0', '').strip() for x in id_list]
             target_id = str(st.session_state.user_id).strip()
             
-            if target_id in existing_data['ID_clean'].values:
-                # 🌟 이미 진행 중인 참가자: 기존 줄 덮어쓰기 (헤더 100% 보존)
-                last_idx = existing_data[existing_data['ID_clean'] == target_id].index[-1]
-                for col in new_df.columns:
-                    if col not in existing_data.columns:
-                        existing_data[col] = None 
-                    existing_data.at[last_idx, col] = new_df.iloc[0][col]
-                
-                updated_df = existing_data.drop(columns=['ID_clean'])
+            if target_id in cleaned_id_list:
+                # 찾았다면 해당 줄(Row)만 찾아서 정확하게 덮어씁니다 (새 줄 생성 안 함)
+                row_to_update = len(cleaned_id_list) - cleaned_id_list[::-1].index(target_id)
+                try:
+                    worksheet.update(f"A{row_to_update}", [row_data]) 
+                except TypeError:
+                    worksheet.update(values=[row_data], range_name=f"A{row_to_update}")
             else:
-                # 🌟 새로운 참가자: 기존 184개 헤더 구조(existing_data) 아래에 무조건 덧붙이기 (헤더 파괴 절대 불가)
-                updated_df = pd.concat([existing_data.drop(columns=['ID_clean']), new_df], ignore_index=True)
+                worksheet.append_row(row_data)
         else:
-            # 시트에 아예 아무것도 없거나 ID 컬럼이 없는 완전 백지일 때
-            updated_df = pd.concat([existing_data, new_df], ignore_index=True)
+            worksheet.append_row(row_data)
             
-        # NaN 값으로 인한 통신 에러 방지
-        updated_df = updated_df.fillna("")
-        
-        conn.update(worksheet=target_sheet_name, data=updated_df)
     except Exception as e:
-        pass # 화면 멈춤 방지용
+        pass 
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
@@ -201,7 +197,6 @@ if st.session_state.page == 'intro':
                     match = pd.DataFrame()
                     found_type = ""
                     
-                    # 이어하기 시트 읽어오기
                     for s_type in ["A형", "B형"]:
                         try:
                             existing_data = conn.read(worksheet=s_type, ttl=0)
@@ -224,6 +219,20 @@ if st.session_state.page == 'intro':
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
+                        # 🌟 [핵심 수정] 이어하기 시 복구된 ID로 자극물 순서 강제 복원 (순서 뒤섞임 완벽 차단)
+                        resumed_rng = random.Random(int(st.session_state.user_id))
+                        if st.session_state.survey_type == 'A':
+                            resumed_p1 = [f"S{i}.png" for i in range(1, 13)]
+                            resumed_p2 = [f"pair{i}.png" for i in range(1, 7)]
+                        else:
+                            resumed_p1 = [f"S{i}.png" for i in range(13, 25)]
+                            resumed_p2 = [f"pair{i}.png" for i in range(7, 13)]
+                        
+                        resumed_rng.shuffle(resumed_p1)
+                        resumed_rng.shuffle(resumed_p2)
+                        st.session_state.p1_order = resumed_p1
+                        st.session_state.p2_order = resumed_p2
+
                         exclude_keys = ['ID', '설문유형', '현재페이지', 'p1_idx', 'p2_idx', 'ID_clean']
                         for k, v in user_record.items():
                             if k not in exclude_keys and pd.notna(v):
@@ -231,7 +240,7 @@ if st.session_state.page == 'intro':
                                     st.session_state.user_data[k] = v
                                 else:
                                     st.session_state.all_responses[k] = v
-                                    st.session_state[k] = int(v) 
+                                    st.session_state[k] = int(float(v)) if str(v).replace('.','',1).isdigit() else v
 
                         st.success(f"데이터를 성공적으로 불러왔습니다! ({found_type} 배정)")
                         import time; time.sleep(1)
