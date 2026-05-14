@@ -18,15 +18,25 @@ if 'p1_idx' not in st.session_state:
 if 'p2_idx' not in st.session_state:
     st.session_state.p2_idx = 0
 
-# 파트 1 (단일 이미지 S1~S24) 랜덤 리스트
+# 🌟 A/B 테스트 (무작위 할당) 기능 추가
+if 'survey_type' not in st.session_state:
+    st.session_state.survey_type = random.choice(['A', 'B']) # 처음 접속 시 A 또는 B 무작위 배정
+
+# 🌟 파트 1: 배정된 유형에 따라 절반씩 리스트 생성
 if 'p1_order' not in st.session_state:
-    p1_list = [f"S{i}.png" for i in range(1, 25)] 
+    if st.session_state.survey_type == 'A':
+        p1_list = [f"S{i}.png" for i in range(1, 13)] # A형: S1~12
+    else:
+        p1_list = [f"S{i}.png" for i in range(13, 25)] # B형: S13~24
     random.shuffle(p1_list)
     st.session_state.p1_order = p1_list
 
-# 파트 2 (이미지 쌍 pair) 랜덤 리스트
+# 🌟 파트 2: 배정된 유형에 따라 절반씩 리스트 생성
 if 'p2_order' not in st.session_state:
-    p2_list = [f"pair{i}.png" for i in range(1, 13)] 
+    if st.session_state.survey_type == 'A':
+        p2_list = [f"pair{i}.png" for i in range(1, 7)] # A형: pair1~6
+    else:
+        p2_list = [f"pair{i}.png" for i in range(7, 13)] # B형: pair7~12
     random.shuffle(p2_list)
     st.session_state.p2_order = p2_list
 
@@ -158,11 +168,10 @@ elif st.session_state.page == 'demographics':
             st.error("모든 문항에 응답해 주세요.")
         else:
             st.session_state.user_data.update({"성별": gender, "연령": age, "학력": edu, "분야": major, "의류지출": spending})
-            # 🌟 복구됨: 바로 파트 1 설문으로 가지 않고 파트 1 안내 페이지로 이동
             st.session_state.page = 'part1_intro'
             st.rerun()
 
-# --- 🌟 복구됨: [새로 추가된 페이지] 파트 1 중간 안내 ---
+# --- [새로 추가된 페이지] 파트 1 중간 안내 ---
 elif st.session_state.page == 'part1_intro':
     prevent_refresh_script()
     components.html(auto_scroll_top_script(), height=0)
@@ -231,7 +240,7 @@ elif st.session_state.page == 'part1_survey':
             step_responses[key_name] = score
         st.write("")
 
-    # 🌟 수동 맨 위로 버튼 (최종 안정화 버전)
+    # 🌟 수동 맨 위로 버튼
     components.html("""
     <script>
     function goToTop() {
@@ -289,7 +298,6 @@ elif st.session_state.page == 'part2_intro':
     st.success("단일 이미지 감성 평가가 모두 끝났습니다. 수고하셨습니다!")
     st.write("---")
     
-    # 🌟 복구됨: 파트 2 상세 안내문
     st.subheader("📝 [파트 2] 비교 평가 안내")
     st.info("""
     지금부터는 **[파트 2] 비교 평가**가 시작됩니다.
@@ -442,7 +450,14 @@ elif st.session_state.page == 'part2_survey':
     else:
         if st.button("✅ 모든 설문 완료 및 제출", key="submit_btn", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
-            final_data = {**st.session_state.user_data, **st.session_state.all_responses}
+            
+            # 🌟 제출 데이터에 설문유형(A/B) 추가
+            final_data = {
+                "설문유형": st.session_state.survey_type,
+                **st.session_state.user_data, 
+                **st.session_state.all_responses
+            }
+            
             conn = st.connection("gsheets", type=GSheetsConnection)
             spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
             sh = conn.client._client.open_by_url(spreadsheet_url)
