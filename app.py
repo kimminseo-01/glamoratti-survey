@@ -135,8 +135,9 @@ if st.session_state.page == 'intro':
     - 모든 응답은 익명으로 처리되며 연구 목적으로만 사용됩니다.
     - 설문조사 참여에 동의한다면 설문 시작하기 버튼을 눌러 설문을 시작해주십시오.
     """)
+    st.warning("⚠️ 본 설문조사는 만 19세 이상 한국 거주 여성을 대상으로 하고 있습니다.")
     st.warning("⚠️ 중간에 브라우저를 새로고침하면 응답이 초기화되니 주의해 주세요.")
-    st.warning("⚠️ 모든 문항에 대한 설문을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
+    st.warning("⚠️ 모든 문항에 대한 응답을 완료하였을 경우, 제출 버튼 클릭 후 제출 완료 문구가 표시될 때까지 기다려주세요.")
     if st.button("설문 시작하기"):
         st.session_state.page = 'demographics'
         st.rerun()
@@ -146,7 +147,7 @@ elif st.session_state.page == 'demographics':
     prevent_refresh_script()
     st.title("인구통계학적 정보")
     st.write("---")
-    gender = st.radio("본 설문조사는 한국 거주 여성을 대상으로 하고 있습니다. 귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
+    gender = st.radio("귀하의 성별은 여성입니까? *", ["예", "아니오"], index=None)
     age = st.radio("귀하의 연령은 어떻게 되십니까? (만 나이 기준) *", ["만 19세 ~ 만 29 세", "만 30 세 ~ 만 39 세", "만 40 세 ~ 만 49 세", "만 50 세 ~ 만 59 세", "만 60 이상"], index=None)
     edu = st.radio("귀하의 최종 학력은 무엇입니까? *", ["고등학교 졸업", "대학교 재학", "대학교 졸업", "대학원 재학", "대학원 졸업"], index=None)
     major = st.radio("귀하의 현재 직종 혹은 전공 계열은 무엇입니까? *", ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "그 외"], index=None)
