@@ -52,7 +52,7 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 [수정됨] 실시간 시트 저장 (유실 방지 및 중복행 방지 최종 버전) ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (미리 써둔 헤더 완벽 보존 버전) ---
 def save_progress_to_sheet():
     try:
         # 스트림릿 캐시를 비워야 최신 데이터를 쓰고 읽을 수 있습니다.
@@ -83,7 +83,8 @@ def save_progress_to_sheet():
         new_row = pd.DataFrame([current_data])
         
         # 3. 중복 확인 및 업데이트/추가 로직
-        if not existing_data.empty and "ID" in existing_data.columns:
+        # 🌟 핵심 수정: 데이터가 0줄(empty)이라도 컬럼(헤더)이 존재하면 기존 구조를 살리도록 empty 조건 제거
+        if "ID" in existing_data.columns:
             # ID 컬럼의 소수점(.0) 제거 후 문자열 비교
             existing_data['ID_match'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             target_id = str(st.session_state.user_id).strip()
@@ -97,8 +98,13 @@ def save_progress_to_sheet():
                     existing_data.at[idx, col] = new_row.iloc[0][col]
                 updated_df = existing_data.drop(columns=['ID_match'])
             else:
-                # 🌟 새 참가자: 맨 아래에 행 추가 (Append)
+                # 🌟 새 참가자: 기존의 184개 컬럼 순서를 강제로 유지하면서 Append
+                original_cols = existing_data.drop(columns=['ID_match']).columns.tolist()
                 updated_df = pd.concat([existing_data.drop(columns=['ID_match']), new_row], ignore_index=True)
+                
+                # 혹시나 순서가 섞이지 않도록 원래 헤더 순서대로 재정렬
+                all_cols = original_cols + [c for c in updated_df.columns if c not in original_cols]
+                updated_df = updated_df[all_cols]
         else:
             # 시트가 완전히 비어있거나 ID 컬럼이 없는 경우
             updated_df = new_row
@@ -212,7 +218,8 @@ if st.session_state.page == 'intro':
                                     match = temp_match
                                     found_type = s_type
                                     break
-                        except Exception: continue
+                        except Exception:
+                            continue
                     
                     if not match.empty:
                         user_record = match.iloc[-1].to_dict()
