@@ -4,7 +4,6 @@ import random
 import streamlit.components.v1 as components
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-import gspread # 🌟 gspread 직접 제어를 위해 추가됨
 
 # --- 1. 초기 설정 및 세션 상태 관리 ---
 if 'page' not in st.session_state:
@@ -19,11 +18,11 @@ if 'p1_idx' not in st.session_state:
 if 'p2_idx' not in st.session_state:
     st.session_state.p2_idx = 0
 
-# 🌟 고유 ID (이어하기 번호)
+# 🌟 고유 ID (이어하기 번호) - 세션 내 1회만 생성
 if 'user_id' not in st.session_state:
-    st.session_state.user_id = str(random.randint(100000, 999999)) # 6자리 무작위 숫자
+    st.session_state.user_id = str(random.randint(100000, 999999))
 
-# 🌟 참가자 번호를 시드(Seed)로 사용하여 항상 동일한 랜덤 순서를 보장
+# 🌟 [순서 고정] 참가자 번호를 시드로 사용하여 항상 동일한 랜덤 순서 생성
 rng = random.Random(int(st.session_state.user_id))
 
 # 🌟 A/B 테스트 (시드 기반 고정)
@@ -35,7 +34,7 @@ if 'p1_order' not in st.session_state:
         p1_list = [f"S{i}.png" for i in range(1, 13)] 
     else:
         p1_list = [f"S{i}.png" for i in range(13, 25)] 
-    rng.shuffle(p1_list) 
+    rng.shuffle(p1_list) # 🌟 시드 기반 셔플
     st.session_state.p1_order = p1_list
 
 if 'p2_order' not in st.session_state:
@@ -43,7 +42,7 @@ if 'p2_order' not in st.session_state:
         p2_list = [f"pair{i}.png" for i in range(1, 7)] 
     else:
         p2_list = [f"pair{i}.png" for i in range(7, 13)] 
-    rng.shuffle(p2_list) 
+    rng.shuffle(p2_list) # 🌟 시드 기반 셔플
     st.session_state.p2_order = p2_list
 
 def get_image_base64(path):
@@ -53,20 +52,26 @@ def get_image_base64(path):
     except FileNotFoundError:
         return None
 
-# --- 🌟 실시간 시트 저장 (중복 행 추가 버그 완벽 해결) ---
+# --- 🌟 [수정됨] 실시간 시트 저장 (유실 방지 및 중복행 방지 최종 버전) ---
 def save_progress_to_sheet():
     try:
+        # 스트림릿 캐시를 비워야 최신 데이터를 쓰고 읽을 수 있습니다.
+        st.cache_data.clear()
         conn = st.connection("gsheets", type=GSheetsConnection)
-        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        target_sheet_name = f"{st.session_state.survey_type}형"
         
-        sh = conn.client.open_by_url(spreadsheet_url)
-        worksheet = sh.worksheet(f"{st.session_state.survey_type}형")
+        # 1. 기존 데이터 읽기 (ttl=0으로 캐시 없이 읽기)
+        try:
+            existing_data = conn.read(worksheet=target_sheet_name, ttl=0)
+            if existing_data is None:
+                return # 시트를 못 읽어오면 안전을 위해 중단
+            existing_data = existing_data.copy()
+        except Exception:
+            return # 통신 오류 시 중단
 
-        # 🌟 ID 소수점 에러 원천 차단
-        clean_user_id = str(st.session_state.user_id).replace('.0', '').strip()
-
+        # 2. 현재 응답 데이터 정리
         current_data = {
-            "ID": clean_user_id,
+            "ID": str(st.session_state.user_id),
             "설문유형": st.session_state.survey_type,
             "현재페이지": st.session_state.page,
             "p1_idx": st.session_state.p1_idx,
@@ -75,35 +80,35 @@ def save_progress_to_sheet():
             **st.session_state.all_responses
         }
         
-        headers = worksheet.row_values(1)
+        new_row = pd.DataFrame([current_data])
         
-        if not headers:
-            headers = list(current_data.keys())
-            worksheet.append_row(headers)
+        # 3. 중복 확인 및 업데이트/추가 로직
+        if not existing_data.empty and "ID" in existing_data.columns:
+            # ID 컬럼의 소수점(.0) 제거 후 문자열 비교
+            existing_data['ID_match'] = existing_data['ID'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            target_id = str(st.session_state.user_id).strip()
             
-        row_data = [str(current_data.get(header, "")) for header in headers]
-        
-        if "ID" in headers:
-            id_col_index = headers.index("ID") + 1 
-            
-            # 시트의 전체 ID 열을 가져와서 문자열로 완벽히 정제한 후 매칭
-            id_list = worksheet.col_values(id_col_index)
-            cleaned_id_list = [str(x).replace('.0', '').strip() for x in id_list]
-            
-            if clean_user_id in cleaned_id_list:
-                # 찾았다면 해당 줄(Row)만 찾아서 정확하게 덮어씁니다 (새 줄 생성 안 함)
-                row_to_update = len(cleaned_id_list) - cleaned_id_list[::-1].index(clean_user_id)
-                try:
-                    worksheet.update(values=[row_data], range_name=f"A{row_to_update}")
-                except TypeError:
-                    worksheet.update(f"A{row_to_update}", [row_data]) 
+            if target_id in existing_data['ID_match'].values:
+                # 🌟 기존 참가자: 해당 행을 찾아 내용만 교체 (덮어쓰기)
+                idx = existing_data[existing_data['ID_match'] == target_id].index[-1]
+                for col in new_row.columns:
+                    if col not in existing_data.columns:
+                        existing_data[col] = ""
+                    existing_data.at[idx, col] = new_row.iloc[0][col]
+                updated_df = existing_data.drop(columns=['ID_match'])
             else:
-                worksheet.append_row(row_data)
+                # 🌟 새 참가자: 맨 아래에 행 추가 (Append)
+                updated_df = pd.concat([existing_data.drop(columns=['ID_match']), new_row], ignore_index=True)
         else:
-            worksheet.append_row(row_data)
+            # 시트가 완전히 비어있거나 ID 컬럼이 없는 경우
+            updated_df = new_row
             
+        # 4. 최종 시트 업데이트 (NaN 제거)
+        updated_df = updated_df.fillna("")
+        conn.update(worksheet=target_sheet_name, data=updated_df)
+        
     except Exception as e:
-        pass 
+        pass # 에러로 설문이 멈추지 않게 처리
 
 # --- 새로고침 방지 ---
 def prevent_refresh_script():
@@ -194,7 +199,6 @@ if st.session_state.page == 'intro':
             if st.button("불러오기"):
                 try:
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    
                     match = pd.DataFrame()
                     found_type = ""
                     
@@ -208,22 +212,19 @@ if st.session_state.page == 'intro':
                                     match = temp_match
                                     found_type = s_type
                                     break
-                        except Exception:
-                            continue
+                        except Exception: continue
                     
                     if not match.empty:
                         user_record = match.iloc[-1].to_dict()
-                        
-                        # 🌟 문자열로 정제하여 ID 복구
                         st.session_state.user_id = str(user_record.get('ID')).replace('.0', '').strip()
                         st.session_state.survey_type = user_record.get('설문유형')
                         st.session_state.page = user_record.get('현재페이지')
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
-                        # 🌟 [핵심 수정] 이어하기 시 랜덤 함수의 '톱니바퀴' 상태를 완벽 동기화
+                        # 🌟 이어하기 시 랜덤 시드 동기화 (이미지 순서 복원)
                         resumed_rng = random.Random(int(st.session_state.user_id))
-                        _ = resumed_rng.choice(['A', 'B']) # 초기 배정 시 사용했던 1회차 랜덤 횟수를 똑같이 차감해줌
+                        _ = resumed_rng.choice(['A', 'B']) # 1회 차감
                         
                         if st.session_state.survey_type == 'A':
                             resumed_p1 = [f"S{i}.png" for i in range(1, 13)]
@@ -244,15 +245,17 @@ if st.session_state.page == 'intro':
                                     st.session_state.user_data[k] = v
                                 else:
                                     st.session_state.all_responses[k] = v
-                                    st.session_state[k] = int(float(v)) if str(v).replace('.','',1).isdigit() else v
+                                    # 슬라이더 값 복원
+                                    try: st.session_state[k] = int(float(v))
+                                    except: st.session_state[k] = v
 
-                        st.success(f"데이터를 성공적으로 불러왔습니다! ({found_type} 배정)")
+                        st.success(f"데이터를 성공적으로 불러왔습니다! ({found_type})")
                         import time; time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("해당 번호의 기록을 찾을 수 없습니다. 번호를 다시 확인해주세요.")
+                        st.error("해당 번호의 기록을 찾을 수 없습니다.")
                 except Exception as e:
-                    st.error("불러오는 중 오류가 발생했습니다. 구글 시트 연결을 확인하세요.")
+                    st.error("불러오는 중 오류가 발생했습니다.")
 
 # --- 3. [2페이지] 인구통계학적 설문 ---
 elif st.session_state.page == 'demographics':
@@ -275,20 +278,15 @@ elif st.session_state.page == 'demographics':
             with st.spinner("저장 중..."): save_progress_to_sheet()
             st.rerun()
 
-# --- [새로 추가된 페이지] 파트 1 중간 안내 ---
+# --- [파트 1 중간 안내] ---
 elif st.session_state.page == 'part1_intro':
     prevent_refresh_script()
     components.html(auto_scroll_top_script("part1_intro"), height=0)
     st.title("📝 [파트 1] 감성 평가 안내")
     st.write("---")
     st.info("""
-    지금부터 **[파트 1] 감성 평가**가 시작됩니다.
-    
-    - 지금부터 여성 아우터 이미지를 순차적으로 보여드립니다. 각 이미지를 충분히 살펴보신 후, 해당 아우터에 대해 느끼시는 감성에 대해 응답해 주십시오.
-    - 정답이 있는 것이 아니므로, 직관적으로 느끼신 대로 응답해 주시면 됩니다.
-    - 자극물 제시 순서는 참여자별로 무작위화 합니다.
+    지금부터 **[파트 1] 감성 평가**가 시작됩니다. 각 이미지를 살펴보신 후, 해당 아우터에 대해 느끼시는 감성에 대해 응답해 주십시오.
     """)
-    st.write("")
     if st.button("파트 1 시작하기", use_container_width=True):
         st.session_state.page = 'part1_survey'
         st.rerun()
@@ -298,7 +296,6 @@ elif st.session_state.page == 'part1_survey':
     prevent_refresh_script()
     idx = st.session_state.p1_idx
     apply_common_css()
-    
     components.html(auto_scroll_top_script(f"p1_{idx}"), height=0)
     
     total_p1 = len(st.session_state.p1_order)
@@ -309,48 +306,23 @@ elif st.session_state.page == 'part1_survey':
     st.markdown(f'<div class="sticky-image"><p style="margin:0; font-size: 0.9em; font-weight:bold;">[파트 1] 감성 평가 ({idx+1}/{total_p1})</p><img src="{img_src}"><br><small style="color:#999;">{current_img_file}</small></div>', unsafe_allow_html=True)
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
     
-    step_responses = {}
     adj_pairs = [("촌스럽다", "세련되다"), ("소박하다", "고급스럽다"), ("수수하다", "화려하다"), ("순수하다", "섹시하다"), ("투박하다", "우아하다"), ("단조롭다", "드라마틱하다"), ("온화하다", "강렬하다"), ("여리다", "단단하다"), ("부드럽다", "날카롭다"), ("복잡하다", "간결하다"), ("밋밋하다", "화사하다")]
     st.subheader("1. 감성 평가")
 
+    step_responses = {}
     for i, (l, r) in enumerate(adj_pairs):
         key_name = f"{current_img_file}_emo{i+1}"
         center_col = st.columns([1,6,1])[1]
-        
         with center_col:
-            st.markdown(
-                f"""
-                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;">
-                    <span>{l}</span><span>{r}</span>
-                </div>
-                """, unsafe_allow_html=True
-            )
+            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>{l}</span><span>{r}</span></div>', unsafe_allow_html=True)
             score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
-    components.html("""
-    <script>
-    function goToTop() {
-        window.parent.scrollTo({ top: 0, behavior: 'smooth' });
-        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
-        selectors.forEach(selector => {
-            const el = window.parent.document.querySelector(selector);
-            if (el) { el.scrollTo({ top: 0, behavior: 'smooth' }); el.scrollTop = 0; }
-        });
-        window.parent.document.documentElement.scrollTop = 0; window.parent.document.body.scrollTop = 0;
-    }
-    </script>
-    <div style="margin-top:20px;"><button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button></div>
-    """, height=80)
-    
     if st.button("다음 이미지로 ->", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
-        
-        if st.session_state.p1_idx >= total_p1:
-            st.session_state.page = 'part2_intro'
-            
+        if st.session_state.p1_idx >= total_p1: st.session_state.page = 'part2_intro'
         with st.spinner("저장 중..."): save_progress_to_sheet()
         import time; time.sleep(0.15)
         st.rerun()
@@ -360,16 +332,8 @@ elif st.session_state.page == 'part2_intro':
     prevent_refresh_script()
     components.html(auto_scroll_top_script("part2_intro"), height=0)
     st.title("🎉 파트 1 완료!")
-    st.success("단일 이미지 감성 평가가 모두 끝났습니다. 수고하셨습니다!")
-    st.write("---")
     st.subheader("📝 [파트 2] 비교 평가 안내")
-    st.info("""
-    지금부터는 **[파트 2] 비교 평가**가 시작됩니다.
-    - 지금부터는 1980년대 아우터 이미지(좌측)와 이를 재해석한 현대의 아우터 이미지(우측)가 쌍으로 제시됩니다.
-    - 좌측 이미지와 비교하여 **우측 이미지**에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.
-    - 자극물 제시 순서는 참여자별로 무작위화 합니다. 
-    """)
-    st.write("")
+    st.info("좌측 이미지와 비교하여 우측 이미지에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.")
     if st.button("파트 2 시작하기", use_container_width=True):
         st.session_state.page = 'part2_survey'
         st.rerun()
@@ -379,7 +343,6 @@ elif st.session_state.page == 'part2_survey':
     prevent_refresh_script()
     idx = st.session_state.p2_idx
     apply_common_css()
-    
     components.html(auto_scroll_top_script(f"p2_{idx}"), height=0)
     
     total_p2 = len(st.session_state.p2_order)
@@ -392,57 +355,37 @@ elif st.session_state.page == 'part2_survey':
     
     step_responses = {}
     st.subheader("2. 수용 의도 평가")
-    acc_items = ["수용할 가능성", "구매할 의향", "추천할 의향"]
-    for i, item in enumerate(acc_items):
+    for i, item in enumerate(["수용할 가능성", "구매할 의향", "추천할 의향"]):
         st.write(f"나는 **우측 이미지**의 아우터를 **{item}**이 높다.")
-        l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_acc{i+1}"
         center_col = st.columns([1,6,1])[1]
         with center_col:
-            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>{l}</span><span>{r}</span></div>', unsafe_allow_html=True)
+            st.markdown('<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>전혀 아니다</span><span>매우 그렇다</span></div>', unsafe_allow_html=True)
             score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
     st.subheader("3. 재해석 정도 평가")
-    re_items = ["실루엣", "색상", "소재", "디테일"]
-    for i, item in enumerate(re_items):
+    for i, item in enumerate(["실루엣", "색상", "소재", "디테일"]):
         st.write(f"우측 이미지는 좌측에 비해 **{item}**을 상당히 변형하였다.")
-        l, r = "전혀 아니다", "매우 그렇다"
         key_name = f"{current_img_file}_re{i+1}"
         center_col = st.columns([1,6,1])[1]
         with center_col:
-            st.markdown(f'<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>{l}</span><span>{r}</span></div>', unsafe_allow_html=True)
+            st.markdown('<div style="display:flex; justify-content:space-between; font-size:15px; font-weight:500; margin-bottom:-10px;"><span>전혀 아니다</span><span>매우 그렇다</span></div>', unsafe_allow_html=True)
             score = st.slider("", min_value=1, max_value=7, value=st.session_state.get(key_name, 4), step=1, key=key_name, label_visibility="collapsed")
             step_responses[key_name] = score
         st.write("")
 
-    components.html("""
-    <script>
-    function goToTop() {
-        window.parent.scrollTo({ top: 0, behavior: 'smooth' });
-        const selectors = ['.main', '[data-testid="stAppViewContainer"]', '[data-testid="stMain"]', 'section.main'];
-        selectors.forEach(selector => {
-            const el = window.parent.document.querySelector(selector);
-            if (el) { el.scrollTo({ top: 0, behavior: 'smooth' }); el.scrollTop = 0; }
-        });
-        window.parent.document.documentElement.scrollTop = 0; window.parent.document.body.scrollTop = 0;
-    }
-    </script>
-    <div style="margin-top:20px;"><button onclick="goToTop()" style="width:100%; padding:14px; background:#F0F2F6; border:1px solid #DAE1E7; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">⬆️ 화면 맨 위로</button></div>
-    """, height=80)
-    
     if idx < total_p2 - 1:
-        if st.button("다음 이미지 쌍으로 ->", key="next_pair_btn", use_container_width=True):
+        if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
             with st.spinner("저장 중..."): save_progress_to_sheet()
-            import time; time.sleep(0.15)
             st.rerun()
     else:
-        if st.button("✅ 모든 설문 완료 및 제출", key="submit_btn", use_container_width=True):
+        if st.button("✅ 모든 설문 완료 및 제출", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.page = "final"
             with st.spinner("최종 제출 중..."): save_progress_to_sheet()
-            st.success("성공적으로 제출되었습니다! 설문에 참여해주셔서 감사합니다!")
+            st.success("성공적으로 제출되었습니다! 감사합니다!")
             st.balloons()
