@@ -336,13 +336,16 @@ elif st.session_state.page == 'part1_intro':
     st.title("📝 [파트 1] 감성 평가 안내")
     st.write("---")
     st.info("""
-    지금부터 **[파트 1] 감성 평가**가 시작됩니다. 각 이미지를 살펴보신 후, 해당 아우터에 대해 느끼시는 감성에 대해 응답해 주십시오.
+    지금부터 **[파트 1] 감성 평가**가 시작됩니다.
+    - 지금부터 여성 아우터 이미지를 순차적으로 보여드립니다. 각 이미지를 충분히 살펴보신 후, 해당 아우터에 대해 느껴지는 감성에 대해 응답해 주십시오.
+    - 정답이 있는 것이 아니므로, 직관적으로 느끼신 대로 응답해 주시면 됩니다.
+    - 자극물 제시 순서는 참여자별로 무작위화 합니다.
     """)
     if st.button("파트 1 시작하기", use_container_width=True):
         st.session_state.page = 'part1_survey'
         st.rerun()
 
-# --- 4. [3페이지] 파트 1: 감성 인지 평가 ---
+# --- 4. [3페이지] 파트 1: 감성 평가 ---
 elif st.session_state.page == 'part1_survey':
     prevent_refresh_script()
     idx = st.session_state.p1_idx
@@ -384,7 +387,12 @@ elif st.session_state.page == 'part2_intro':
     components.html(auto_scroll_top_script("part2_intro"), height=0)
     st.title("🎉 파트 1 완료!")
     st.subheader("📝 [파트 2] 비교 평가 안내")
-    st.info("좌측 이미지와 비교하여 우측 이미지에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.")
+    st.info("""
+    지금부터는 **[파트 2] 비교 평가**가 시작됩니다.
+    - 지금부터는 1980년대 아우터 이미지(좌측)와 이를 재해석한 현대의 아우터 이미지(우측)가 쌍으로 제시됩니다.
+    - 좌측 이미지와 비교하여 **우측 이미지**에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.
+    - 자극물 제시 순서는 참여자별로 무작위화 합니다. 
+    """)
     if st.button("파트 2 시작하기", use_container_width=True):
         st.session_state.page = 'part2_survey'
         st.rerun()
