@@ -115,13 +115,25 @@ def save_progress_to_sheet():
     except Exception as e:
         pass # 에러로 설문이 멈추지 않게 처리
 
-# --- 새로고침 방지 ---
+# --- 🌟 [수정됨] 새로고침 및 광클(더블클릭) 방지 ---
 def prevent_refresh_script():
     components.html("""
     <script>
+    // 새로고침 경고
     window.parent.addEventListener("beforeunload", function (e) {
         e.preventDefault();
         e.returnValue = '';
+    });
+
+    // 🌟 광클 방지 로직: 버튼을 누르는 즉시 비활성화 처리하여 중복 클릭 원천 차단
+    window.parent.document.addEventListener('click', function(e) {
+        let target = e.target.closest('button');
+        if (target && (target.innerText.includes('다음') || target.innerText.includes('제출') || target.innerText.includes('시작') || target.innerText.includes('불러오기'))) {
+            setTimeout(function() {
+                target.style.pointerEvents = 'none';
+                target.style.opacity = '0.5';
+            }, 50); // 0.05초 뒤 즉시 클릭 무효화
+        }
     });
     </script>
     """, height=0)
@@ -174,13 +186,12 @@ if st.session_state.page == 'intro':
     st.title("1980년대 패션의 재해석 수준에 따른 Glamoratti 아우터의 감성 인지 조사")
     st.write("---")
     
-    # 🌟 [새로 추가된 상세 안내문]
     st.markdown("""
     **안녕하세요. 본 설문조사에 참여해 주셔서 진심으로 감사드립니다.**
     
     본 설문은 2026년 주요 패션 트렌드인 'Glamoratti(글래모라티)'에 대한 소비자의 감성적 반응과 수용 의도를 조사하기 위해 설계되었습니다.
 
-     ### 본 연구의 목적
+    ### 본 연구의 목적
     본 연구는 이러한 Glamoratti 트렌드 여성 아우터(재킷, 코트, 퍼 아우터 등)를 대상으로, 1980년대 패션 요소가 어느 정도 수준으로 재해석되었는지에 따라 소비자가 느끼는 감성적 인상과 수용 의도(착용, 구매, 추천 의도)가 어떻게 달라지는지를 탐구합니다.
     
     설문에서는 1980년대 원형 아우터 이미지와 이를 현대적으로 재해석한 아우터 이미지를 함께 보여드린 후, 현대 아우터에 대해 느끼시는 감성적 인상과 수용 의도를 여쭈어볼 것입니다.
@@ -222,7 +233,6 @@ if st.session_state.page == 'intro':
     
     st.write("---")
     
-    # 🌟 [참여 동의 로직 추가]
     consent = st.radio(
         "본 설문조사에 자발적으로 참여하는 것에 동의하십니까?", 
         ["예, 동의합니다 (설문 시작)", "아니요, 동의하지 않습니다 (설문 종료)"], 
@@ -234,19 +244,19 @@ if st.session_state.page == 'intro':
     
     col1, col2 = st.columns(2)
     with col1:
-        # 동의했을 때만 버튼 활성화
         if consent == "예, 동의합니다 (설문 시작)":
-            if st.button("처음부터 시작하기", use_container_width=True):
+            # 🌟 [고유 키 부여] 스트림릿 시스템상 더블클릭 중복 실행 방지
+            if st.button("처음부터 시작하기", key="start_btn_1", use_container_width=True):
                 st.session_state.page = 'demographics'
                 st.rerun()
         else:
-            st.button("처음부터 시작하기", use_container_width=True, disabled=True)
+            st.button("처음부터 시작하기", key="start_btn_disabled", use_container_width=True, disabled=True)
             
     with col2:
         with st.expander("이전에 하던 설문 이어하기"):
             resume_id = st.text_input("고유 참가자 번호 6자리를 입력하세요").strip()
             
-            if st.button("불러오기"):
+            if st.button("불러오기", key="load_btn"):
                 try:
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     match = pd.DataFrame()
@@ -273,9 +283,8 @@ if st.session_state.page == 'intro':
                         st.session_state.p1_idx = int(user_record.get('p1_idx', 0))
                         st.session_state.p2_idx = int(user_record.get('p2_idx', 0))
                         
-                        # 🌟 이어하기 시 랜덤 시드 동기화 (이미지 순서 복원)
                         resumed_rng = random.Random(int(st.session_state.user_id))
-                        _ = resumed_rng.choice(['A', 'B']) # 1회 차감
+                        _ = resumed_rng.choice(['A', 'B']) 
                         
                         if st.session_state.survey_type == 'A':
                             resumed_p1 = [f"S{i}.png" for i in range(1, 13)]
@@ -296,7 +305,6 @@ if st.session_state.page == 'intro':
                                     st.session_state.user_data[k] = v
                                 else:
                                     st.session_state.all_responses[k] = v
-                                    # 슬라이더 값 복원
                                     try: st.session_state[k] = int(float(v))
                                     except: st.session_state[k] = v
 
@@ -320,7 +328,8 @@ elif st.session_state.page == 'demographics':
     major = st.radio("귀하의 현재 직종 혹은 전공 계열은 무엇입니까? *", ["예술·디자인 계열 (패션, 의류, 시각디자인 등)", "그 외"], index=None)
     spending = st.radio("귀하의 평소 월 평균 의류 지출액은 어느 정도입니까? *", ["5만 원 미만", "5만 원 이상 ~ 10만 원 미만", "10만 원 이상 ~ 20만 원 미만", "20만 원 이상 ~ 30만 원 미만", "30만 원 이상 ~ 50만 원 미만", "50만 원 이상"], index=None)
 
-    if st.button("다음 단계로"):
+    # 🌟 [고유 키 부여]
+    if st.button("다음 단계로", key="demo_next_btn"):
         if not (gender and age and edu and major and spending):
             st.error("모든 문항에 응답해 주세요.")
         else:
@@ -341,7 +350,8 @@ elif st.session_state.page == 'part1_intro':
     - 정답이 있는 것이 아니므로, 직관적으로 느끼신 대로 응답해 주시면 됩니다.
     - 자극물 제시 순서는 참여자별로 무작위화 합니다.
     """)
-    if st.button("파트 1 시작하기", use_container_width=True):
+    # 🌟 [고유 키 부여]
+    if st.button("파트 1 시작하기", key="p1_start_btn", use_container_width=True):
         st.session_state.page = 'part1_survey'
         st.rerun()
 
@@ -373,7 +383,8 @@ elif st.session_state.page == 'part1_survey':
             step_responses[key_name] = score
         st.write("")
 
-    if st.button("다음 이미지로 ->", use_container_width=True):
+    # 🌟 [고유 키 부여] 이미지 번호(idx)별로 완전히 다른 버튼으로 인식하게 하여 백엔드 단에서 중복 실행 원천 차단!
+    if st.button("다음 이미지로 ->", key=f"p1_next_btn_{idx}", use_container_width=True):
         st.session_state.all_responses.update(step_responses)
         st.session_state.p1_idx += 1
         if st.session_state.p1_idx >= total_p1: st.session_state.page = 'part2_intro'
@@ -393,7 +404,8 @@ elif st.session_state.page == 'part2_intro':
     - 좌측 이미지와 비교하여 **우측 이미지**에 대한 수용 의도와 재해석 정도를 평가해 주시면 됩니다.
     - 자극물 제시 순서는 참여자별로 무작위화 합니다. 
     """)
-    if st.button("파트 2 시작하기", use_container_width=True):
+    # 🌟 [고유 키 부여]
+    if st.button("파트 2 시작하기", key="p2_start_btn", use_container_width=True):
         st.session_state.page = 'part2_survey'
         st.rerun()
 
@@ -436,13 +448,15 @@ elif st.session_state.page == 'part2_survey':
         st.write("")
 
     if idx < total_p2 - 1:
-        if st.button("다음 이미지 쌍으로 ->", use_container_width=True):
+        # 🌟 [고유 키 부여] 
+        if st.button("다음 이미지 쌍으로 ->", key=f"p2_next_btn_{idx}", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.p2_idx += 1
             with st.spinner("저장 중..."): save_progress_to_sheet()
             st.rerun()
     else:
-        if st.button("✅ 모든 설문 완료 및 제출", use_container_width=True):
+        # 🌟 [고유 키 부여]
+        if st.button("✅ 모든 설문 완료 및 제출", key="submit_final_btn", use_container_width=True):
             st.session_state.all_responses.update(step_responses)
             st.session_state.page = "final"
             with st.spinner("최종 제출 중..."): save_progress_to_sheet()
